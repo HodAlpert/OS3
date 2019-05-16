@@ -1,2 +1,17 @@
 cmake-build-debug/
 .idea/
+*.o
+*.d
+*.sym
+*.S
+*.asm
+_*
+
+bootblock
+entryother
+fs.img
+initcode
+initcode.out
+kernel
+mkfs
+xv6.img
