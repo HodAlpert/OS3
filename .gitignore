@@ -15,3 +15,5 @@ initcode.out
 kernel
 mkfs
 xv6.img
+.gdbinit
+
