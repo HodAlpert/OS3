@@ -88,3 +88,15 @@ malloc(uint nbytes)
         return 0;
   }
 }
+
+void* pmalloc() {
+  return 0;
+}
+
+int protect_page(void* ap) {
+  return 0;
+}
+
+int pfree(void* ap) {
+  return 0;
+}
