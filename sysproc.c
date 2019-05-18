@@ -51,9 +51,18 @@ sys_getpid(void)
 
 int sys_protect(void) {
   char* addr;
-  if (argptr(0, (void*)&addr, sizeof(addr)) < 0) return -1;
-  clearpte(addr, PTE_W);
-  return 1;
+  int oper;
+
+  if ((argptr(0, (void*)&addr, sizeof(addr)) < 0) || argint(1, &oper)) return -1;
+  int is_set = ispteflagsset(addr, PTE_W);
+
+  if (oper == 1)
+    clearpte(addr, PTE_W);
+  else if (oper == 0)
+    setpte(addr, PTE_W);
+
+  // Return 1 if the page was protected, 0 otherwise
+  return !is_set;
 }
 
 int

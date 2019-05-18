@@ -304,6 +304,14 @@ void flushtlb() {
   lcr3(V2P(myproc()->pgdir));
 }
 
+int ispteflagsset(char *uva, uint flags) {
+  pte_t * pte = walkpgdir(myproc()->pgdir, uva, 0);
+  if(pte == 0)
+    panic("ispteflagsset");
+
+  return *pte & flags ? 1 : 0;
+}
+
 /**
  * Clear specified flags in the PTE
  */
@@ -314,6 +322,19 @@ void clearpte(char *uva, uint flags) {
   if(pte == 0)
     panic("clearpte");
   *pte &= ~flags;
+  flushtlb();
+}
+
+/**
+ * Set specified flags in the PTE
+ */
+void setpte(char *uva, uint flags) {
+  pte_t *pte;
+
+  pte = walkpgdir(myproc()->pgdir, uva, 0);
+  if(pte == 0)
+    panic("clearpte");
+  *pte |= flags;
   flushtlb();
 }
 
