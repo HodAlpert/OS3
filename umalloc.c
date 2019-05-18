@@ -158,10 +158,9 @@ void* pmalloc() {
 
         uint oldsz = p->s.size;
         p->s.size = (next_page_offset - 2*sizeof(Header) - 1)/sizeof(Header) + 1;
-        p->s.ptr = nextp;
+        p->s.ptr = nextnextp;
 
         nextp->s.size = nunits;
-        nextp->s.ptr = nextnextp;
 
         nextnextp->s.size = oldsz - p->s.size - nextp->s.size;
 
