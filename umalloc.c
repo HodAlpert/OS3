@@ -13,6 +13,7 @@ union header {
   struct {
     union header *ptr;
     uint size;
+    bool pmallocd;
   } s;
   Align x;
 };
@@ -82,6 +83,7 @@ inner_malloc(uint nbytes, int align)
         p->s.size = nunits;
       }
       freep = prevp;
+      p->s.pmallocd = false;
       return (void*)(p + 1);
     }
     if(p == freep)
@@ -170,6 +172,7 @@ void* pmalloc() {
     }
 
     if (found) {
+      p->s.pmallocd = true;
       freep = prevp;
       return (void*)(p + 1);
     }
