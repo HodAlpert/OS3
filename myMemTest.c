@@ -40,6 +40,10 @@ int main() {
   free(ptr2);
 
   pfree(new_page);
+
+  // The page was free'd, but it's still ours. It shouldn't be protected now
+  memset(new_page, 0, PGSIZE);
+
   printf(1, "Test PASSED!\n");
   exit();
 }

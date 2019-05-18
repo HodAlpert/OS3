@@ -183,18 +183,32 @@ void* pmalloc() {
   }
 }
 
-int protect_page(void* ap) {
+int verify_pmallocd(void* ap) {
   Header * ph = (Header*)ap - 1;
   uint pgsize_in_headers = (PGSIZE + sizeof(Header) - 1)/sizeof(Header) + 1;
 
   // Verify that the address has beem pmalloc'd, and that it's the beginning of a page
-  if (!ph->s.pmallocd || ph->s.size != pgsize_in_headers || (uint)ap % PGSIZE != 0) return -1;
+  if (!ph->s.pmallocd || ph->s.size != pgsize_in_headers || (uint)ap % PGSIZE != 0) return 0;
 
+  return 1;
+}
+
+int protect_page(void* ap) {
+  if (!verify_pmallocd(ap)) return -1;
   protect(ap, 1);
 
   return 1;
 }
 
 int pfree(void* ap) {
-  return 0;
+  if (!verify_pmallocd(ap)) return -1;
+
+  if (protect(ap, 0) != 1) {
+    // The page was not protected, so it wasn't pmalloc'd
+    return 0;
+  }
+
+  free(ap);
+
+  return 1;
 }
