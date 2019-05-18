@@ -190,6 +190,8 @@ int protect_page(void* ap) {
   // Verify that the address has beem pmalloc'd, and that it's the beginning of a page
   if (!ph->s.pmallocd || ph->s.size != pgsize_in_headers || (uint)ap % PGSIZE != 0) return -1;
 
+  protect(ap);
+
   return 0;
 }
 

@@ -50,7 +50,10 @@ sys_getpid(void)
 }
 
 int sys_protect(void) {
-  return 0;
+  char* addr;
+  if (argptr(0, (void*)&addr, sizeof(addr)) < 0) return -1;
+  clearpte(addr, PTE_W);
+  return 1;
 }
 
 int

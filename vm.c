@@ -297,6 +297,26 @@ freevm(pde_t *pgdir)
   kfree((char*)pgdir);
 }
 
+/**
+ * Flush the TLB to make new permissions take place
+ */
+void flushtlb() {
+  lcr3(V2P(myproc()->pgdir));
+}
+
+/**
+ * Clear specified flags in the PTE
+ */
+void clearpte(char *uva, uint flags) {
+  pte_t *pte;
+
+  pte = walkpgdir(myproc()->pgdir, uva, 0);
+  if(pte == 0)
+    panic("clearpte");
+  *pte &= ~flags;
+  flushtlb();
+}
+
 // Clear PTE_U on a page. Used to create an inaccessible
 // page beneath the user stack.
 void
