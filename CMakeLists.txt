@@ -80,4 +80,5 @@ add_executable(Ass3
         vm.c
         wc.c
         x86.h
-        zombie.c)
+        zombie.c
+        myMemTest.c)
