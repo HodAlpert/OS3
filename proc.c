@@ -212,6 +212,8 @@ fork(void)
 
   pid = np->pid;
 
+  createSwapFile(np);
+
   acquire(&ptable.lock);
 
   np->state = RUNNABLE;
@@ -241,6 +243,8 @@ exit(void)
       curproc->ofile[fd] = 0;
     }
   }
+
+  removeSwapFile(curproc);
 
   begin_op();
   iput(curproc->cwd);
