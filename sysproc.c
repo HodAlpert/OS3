@@ -49,6 +49,10 @@ sys_getpid(void)
   return myproc()->pid;
 }
 
+int sys_protect(void) {
+  return 0;
+}
+
 int
 sys_sbrk(void)
 {
