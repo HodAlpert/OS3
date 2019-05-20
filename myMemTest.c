@@ -6,7 +6,7 @@ void freeze() {
   sleep(10000000);
 }
 
-int main() {
+void test_pmalloc() {
   // To verify that pmalloc is page aligned, and that free'ing works
   void* ptr1 = malloc(3);
 
@@ -16,7 +16,6 @@ int main() {
 
   if ((uint)new_page % PGSIZE) {
     printf(1, "NOT page aligned %d! FAIL\n", (uint)new_page);
-    exit();
   } else
     printf(1, "Page aligned!\n");
 
@@ -44,6 +43,17 @@ int main() {
   // The page was free'd, but it's still ours. It shouldn't be protected now
   memset(new_page, 0, PGSIZE);
 
-  printf(1, "Test PASSED!\n");
+  printf(1, "pmalloc test PASSED!\n");
+}
+
+void test_swap() {
+  void* mem = malloc(PGSIZE * 14);
+  memset(mem, 0, PGSIZE * 14);
+  free(mem);
+}
+
+int main() {
+  test_pmalloc();
+  test_swap();
   exit();
 }

@@ -37,6 +37,7 @@ enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 // Per-process state
 struct proc {
   uint sz;                     // Size of process memory (bytes)
+  uint res_sz;                 // Size of memory resident in physical RAM
   pde_t* pgdir;                // Page table
   char *kstack;                // Bottom of kernel stack for this process
   enum procstate state;        // Process state
@@ -52,6 +53,7 @@ struct proc {
 
   //Swap file. must initiate with create swap file
   struct file *swapFile;      //page file
+  uint swapFileLocation;      // location to write to swap file
 };
 
 // Process memory is laid out contiguously, low addresses first:

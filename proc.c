@@ -129,7 +129,7 @@ userinit(void)
   if((p->pgdir = setupkvm()) == 0)
     panic("userinit: out of memory?");
   inituvm(p->pgdir, _binary_initcode_start, (int)_binary_initcode_size);
-  p->sz = PGSIZE;
+  p->res_sz = p->sz = PGSIZE;
   memset(p->tf, 0, sizeof(*p->tf));
   p->tf->cs = (SEG_UCODE << 3) | DPL_USER;
   p->tf->ds = (SEG_UDATA << 3) | DPL_USER;
@@ -153,6 +153,39 @@ userinit(void)
   release(&ptable.lock);
 }
 
+// TODO: implement
+char* get_page_to_swap() {
+  return 0;
+}
+
+// TODO: implement
+uint get_swapfile_write_loc() {
+  struct proc *p = myproc();
+  p->swapFileLocation += PGSIZE;
+  return p->swapFileLocation - PGSIZE;
+}
+
+void write_to_swap(char *page) {
+  struct proc *p = myproc();
+
+  writeToSwapFile(p, page, get_swapfile_write_loc(), PGSIZE);
+  setpte(page, PTE_PG);
+  clearpte(page, PTE_P);
+}
+
+void swap_out_pages(int num_pages) {
+  if (num_pages <= 0) return;
+
+  struct proc *p = myproc();
+
+  for (int i = 0; i < num_pages; ++i) {
+    char* page = get_page_to_swap();
+    write_to_swap(page);
+    p->res_sz -= PGSIZE;
+  }
+  lcr3(V2P(p->pgdir)); // flush
+}
+
 // Grow current process's memory by n bytes.
 // Return 0 on success, -1 on failure.
 int
@@ -162,6 +195,13 @@ growproc(int n)
   struct proc *curproc = myproc();
 
   sz = curproc->sz;
+
+  uint overall_pages = (sz + n) / PGSIZE;
+  if (overall_pages > MAX_TOTAL_PAGES) return -1;
+
+  int pages_to_swap = (int)(curproc->res_sz + n) / PGSIZE - MAX_PSYC_PAGES; // @@@ Need to initialize res_sz
+  swap_out_pages(pages_to_swap);
+
   if(n > 0){
     if((sz = allocuvm(curproc->pgdir, sz, sz + n)) == 0)
       return -1;
@@ -170,6 +210,8 @@ growproc(int n)
       return -1;
   }
   curproc->sz = sz;
+  curproc->res_sz += n;
+
   switchuvm(curproc);
   return 0;
 }
@@ -197,6 +239,7 @@ fork(void)
     return -1;
   }
   np->sz = curproc->sz;
+  np->res_sz = curproc->res_sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
 
