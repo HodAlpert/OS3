@@ -1,4 +1,3 @@
-#include <stdbool.h>
 #include "types.h"
 #include "stat.h"
 #include "user.h"
@@ -13,7 +12,7 @@ union header {
   struct {
     union header *ptr;
     uint size;
-    bool pmallocd;
+    uint pmallocd;
   } s;
   Align x;
 };
@@ -63,7 +62,7 @@ morecore(uint nu)
 }
 
 void*
-inner_malloc(uint nbytes, int align)
+malloc(uint nbytes)
 {
   Header *p, *prevp;
   uint nunits;
@@ -83,7 +82,7 @@ inner_malloc(uint nbytes, int align)
         p->s.size = nunits;
       }
       freep = prevp;
-      p->s.pmallocd = false;
+      p->s.pmallocd = 0;
       return (void*)(p + 1);
     }
     if(p == freep)
@@ -97,13 +96,8 @@ inner_malloc(uint nbytes, int align)
  * The reason the header is excluded, is we need to be able to
  * access p's whole memory, from 0 to 4095
  */
-bool aligned(void * p) {
+uint aligned(void * p) {
   return !(((uint)p + sizeof(Header)) % 4096);
-}
-
-void*
-malloc(uint nbytes) {
-  return inner_malloc(nbytes, 0);
 }
 
 void* pmalloc() {
@@ -118,7 +112,7 @@ void* pmalloc() {
 
   for(p = prevp->s.ptr; ; prevp = p, p = p->s.ptr){
     uint next_page_offset = (PGSIZE - ((uint)p) % PGSIZE) % PGSIZE;
-    int found = true;
+    int found = 1;
 
     if (p->s.size == nunits && aligned(p)) {
       // The stars have aligned - the block is exactly page-sized, and aligned.
@@ -148,7 +142,7 @@ void* pmalloc() {
 
       // Make sure we have enough space in p for the allocated page, plus 2 new headers
       if (p->s.size < required_size) {
-        found = false;
+        found = 0;
       }
 
       else {
@@ -172,7 +166,7 @@ void* pmalloc() {
     }
 
     if (found) {
-      p->s.pmallocd = true;
+      p->s.pmallocd = 1;
       freep = prevp;
       return (void*)(p + 1);
     }
