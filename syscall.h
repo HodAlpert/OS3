@@ -22,5 +22,5 @@
 #define SYS_close  21
 #define SYS_yield  22
 #define SYS_light_pmalloc_bit  23
-#define SYS_check_pmallicked_bit 24
+#define SYS_check_pmallocked_bit 24
 

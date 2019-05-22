@@ -194,7 +194,7 @@ void            switchkvm(void);
 int             copyout(pde_t*, uint, void*, uint);
 void            clearpteu(pde_t *pgdir, char *uva);
 int             light_pmalloc_bit(char *user_virtual_address);
-int             check_pmallicked_bit(char *user_virtual_address);
+int             check_pmallocked_bit(char *user_virtual_address);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

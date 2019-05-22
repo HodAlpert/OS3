@@ -105,10 +105,10 @@ int sys_light_pmalloc_bit(void){
 
 }
 
-int sys_check_pmallicked_bit(void){
+int sys_check_pmallocked_bit(void){
     char* addr;
 
     if ((argptr(0, (void*)&addr, sizeof(addr)) < 0)) return -1;
-    return check_pmallicked_bit(addr);
+    return check_pmallocked_bit(addr);
 
 }

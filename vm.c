@@ -394,7 +394,7 @@ int light_pmalloc_bit(char *user_virtual_address){
     return 0;
 }
 
-int check_pmallicked_bit(char *user_virtual_address){
+int check_pmallocked_bit(char *user_virtual_address){
     pte_t *pte;
 
     pte = walkpgdir(myproc()->pgdir, user_virtual_address, 0);

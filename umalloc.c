@@ -96,6 +96,23 @@ malloc(uint nbytes) {
     }
 }
 
+int verify_pmallocd(void* ap) {
+    Header * ph = (Header*)ap - 1;
+    uint pgsize_in_headers = (PGSIZE + sizeof(Header) - 1)/sizeof(Header) + 1;
+
+    // Verify that the address has beem pmalloc'd, and that it's the beginning of a page
+    if (!ph->s.pmallocd || ph->s.size != pgsize_in_headers || (uint)ap % PGSIZE != 0) return 0;
+
+    return 1;
+}
+
+int protect_page(void* ap) {
+    if (!check_pmallocked_bit(ap)) return -1;
+    protect(ap, 1);
+
+    return 1;
+}
+
 void * pmalloc() {
     Header *p, *prevp;
     uint nunits;
