@@ -14,10 +14,10 @@ void test_pmalloc() {
 
   void* ptr2 = malloc(3);
 
-  if ((uint)new_page % PGSIZE) {
-    printf(1, "NOT page aligned %d! FAIL\n", (uint)new_page);
+  if (((uint)new_page-12) % PGSIZE) {
+    printf(1, "Header NOT page aligned %d! FAIL\n", (uint)new_page);
   } else
-    printf(1, "Page aligned!\n");
+    printf(1, "Header page aligned!\n");
 
   // The page is not protected - we should be able to write to it
   memset(new_page, 0, PGSIZE);
@@ -28,6 +28,7 @@ void test_pmalloc() {
     // See that the child crashes because it accesses the protected page
     wait();
   } else {
+    printf(1, "Trying to write to protected page. Expected to fail\n");
     memset(new_page, 0, 1); // Should crash
     printf(1, "Wrote to a protected page. FAIL\n");
 
@@ -54,6 +55,6 @@ void test_swap() {
 
 int main() {
   test_pmalloc();
-  test_swap();
+//  test_swap();
   exit();
 }
