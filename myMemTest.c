@@ -14,7 +14,7 @@ void test_pmalloc() {
 
   void* ptr2 = malloc(3);
 
-  if (((uint)new_page-12) % PGSIZE) {
+  if (((uint)new_page-8) % PGSIZE) {
     printf(1, "Header NOT page aligned %d! FAIL\n", (uint)new_page);
   } else
     printf(1, "Header page aligned!\n");

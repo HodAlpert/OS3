@@ -65,6 +65,22 @@ int sys_protect(void) {
   return !is_set;
 }
 
+int sys_pmallocd(void) {
+  char* addr;
+  int oper;
+
+  if ((argptr(0, (void*)&addr, sizeof(addr)) < 0) || argint(1, &oper)) return -1;
+  int is_set = ispteflagsset(addr, PTE_PMAL);
+
+  if (oper == 1)
+    setpte(addr, PTE_PMAL);
+  else if (oper == 0)
+    clearpte(addr, PTE_PMAL);
+
+  // Return 1 if the page was protected, 0 otherwise
+  return is_set;
+}
+
 int
 sys_sbrk(void)
 {

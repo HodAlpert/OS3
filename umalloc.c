@@ -12,7 +12,6 @@ union header {
   struct {
     union header *ptr;
     uint size;
-    uint pmallocd;
   } s;
   Align x;
 };
@@ -84,7 +83,6 @@ malloc_inner(uint nbytes, uint aligned)
         p->s.size = nunits;
       }
       freep = prevp;
-      p->s.pmallocd = 0;
       return (void*)(p + 1);
     }
     if(p == freep)
@@ -107,7 +105,7 @@ void* pmalloc() {
   morecore(nunits, 1);
 
   p = (Header*)malloc_inner(PGSIZE, 1) - 1;
-  p->s.pmallocd = 1;
+  pmallocd(p, 1);
   return p + 1;
 
 }
@@ -116,7 +114,7 @@ int verify_pmallocd(Header* ph) {
   uint pgsize_in_headers = (PGSIZE + sizeof(Header) - 1)/sizeof(Header) + 1;
 
   // Verify that the address has beem pmalloc'd, and that it's the beginning of a page
-  if (!ph->s.pmallocd || ph->s.size != pgsize_in_headers || (uint)ph % PGSIZE != 0) return 0;
+  if (!pmallocd(ph, -1) || ph->s.size != pgsize_in_headers || (uint)ph % PGSIZE != 0) return 0;
 
   return 1;
 }
@@ -137,6 +135,8 @@ int pfree(void* ap) {
     // The page was not protected, so it wasn't pmalloc'd
     return 0;
   }
+
+  pmallocd(ph, 0);
 
   free(ap);
 
