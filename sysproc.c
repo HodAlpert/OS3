@@ -96,3 +96,19 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+int sys_light_pmalloc_bit(void){
+    char* addr;
+
+    if ((argptr(0, (void*)&addr, sizeof(addr)) < 0))return -1;
+    return light_pmalloc_bit(addr);
+
+}
+
+int sys_check_pmallicked_bit(void){
+    char* addr;
+
+    if ((argptr(0, (void*)&addr, sizeof(addr)) < 0)) return -1;
+    return check_pmallicked_bit(addr);
+
+}

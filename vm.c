@@ -383,6 +383,28 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
   return 0;
 }
 
+int light_pmalloc_bit(char *user_virtual_address){
+    pte_t *pte;
+
+    pte = walkpgdir(myproc()->pgdir, user_virtual_address, 0);
+
+    if((*pte & PTE_P) == 0) // if page is not assigned
+        return -1;
+    pte = (*pte | PTE_PMALLOCED);
+    return 0;
+}
+
+int check_pmallicked_bit(char *user_virtual_address){
+    pte_t *pte;
+
+    pte = walkpgdir(myproc()->pgdir, user_virtual_address, 0);
+
+    if((*pte & PTE_P) == 0 || (*pte && PTE_PMALLOCED) == 0) // if page is not assigned
+        return -1;
+    return 0;
+}
+
+
 //PAGEBREAK!
 // Blank page.
 //PAGEBREAK!

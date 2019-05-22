@@ -30,4 +30,5 @@ SYSCALL(sbrk)
 SYSCALL(sleep)
 SYSCALL(uptime)
 SYSCALL(light_pmalloc_bit)
+SYSCALL(check_pmallicked_bit)
 

@@ -443,12 +443,3 @@ sys_pipe(void)
   fd[1] = fd1;
   return 0;
 }
-
-int sys_light_pmalloc_bit(void){
-    char* addr;
-
-    if ((argptr(0, (void*)&addr, sizeof(addr)) < 0) return -1;
-    pde_t * = myproc()->pgdir;
-    if walk // TODO how to call walkpgdir from here
-
-}
