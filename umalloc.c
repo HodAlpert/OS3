@@ -98,20 +98,17 @@ malloc(uint nbytes) {
 
 void* pmalloc() {
   Header *p;
-  uint nunits;
 
-  nunits = (PGSIZE + sizeof(Header) - 1)/sizeof(Header) + 1;
+  morecore(PGSIZE/sizeof(Header), 1);
 
-  morecore(nunits, 1);
-
-  p = (Header*)malloc_inner(PGSIZE, 1) - 1;
+  p = (Header*)malloc_inner(PGSIZE - sizeof(Header), 1) - 1;
   pmallocd(p, 1);
   return p + 1;
 
 }
 
 int verify_pmallocd(Header* ph) {
-  uint pgsize_in_headers = (PGSIZE + sizeof(Header) - 1)/sizeof(Header) + 1;
+  uint pgsize_in_headers = PGSIZE/sizeof(Header);
 
   // Verify that the address has beem pmalloc'd, and that it's the beginning of a page
   if (!pmallocd(ph, -1) || ph->s.size != pgsize_in_headers || (uint)ph % PGSIZE != 0) return 0;

@@ -20,7 +20,7 @@ void test_pmalloc() {
     printf(1, "Header page aligned!\n");
 
   // The page is not protected - we should be able to write to it
-  memset(new_page, 0, PGSIZE);
+  memset(new_page, 0, PGSIZE-8);
 
   protect_page(new_page);
 
@@ -42,7 +42,7 @@ void test_pmalloc() {
   pfree(new_page);
 
   // The page was free'd, but it's still ours. It shouldn't be protected now
-  memset(new_page, 0, PGSIZE);
+  memset(new_page, 0, PGSIZE-8);
 
   printf(1, "pmalloc test PASSED!\n");
 }
