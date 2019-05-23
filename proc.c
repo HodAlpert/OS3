@@ -153,23 +153,28 @@ userinit(void)
   release(&ptable.lock);
 }
 
-// TODO: implement
 char* get_page_to_swap() {
   struct proc *p = myproc();
   return p->resident_pages_stack[(p->resident_pages_stack_loc--) - 1];
 }
 
-// TODO: implement
-uint get_swapfile_write_loc() {
+// TODO: zero swapFilePages when swapping back in
+uint get_swapfile_write_loc(char* page) {
   struct proc *p = myproc();
-  p->swapFileLocation += PGSIZE;
-  return p->swapFileLocation - PGSIZE;
+  int i;
+
+  // iterate until you find a free space
+  for (i = 0; p->swapFilePages[i] != 0; i++);
+
+  p->swapFilePages[i] = page;
+
+  return i * PGSIZE;
 }
 
 void write_to_swap(char *page) {
   struct proc *p = myproc();
 
-  writeToSwapFile(p, page, get_swapfile_write_loc(), PGSIZE);
+  writeToSwapFile(p, page, get_swapfile_write_loc(page), PGSIZE);
   setpte(page, PTE_PG);
   clearpte(page, PTE_P);
 }

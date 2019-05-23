@@ -53,7 +53,7 @@ struct proc {
 
   //Swap file. must initiate with create swap file
   struct file *swapFile;      //page file
-  uint swapFileLocation;      // location to write to swap file
+  char* swapFilePages[16];    // Each entry is the page written in the swap file in that offset
 
   char * resident_pages_stack[16];
   uint resident_pages_stack_loc;
