@@ -383,25 +383,37 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
   return 0;
 }
 
-int light_pmalloc_bit(char *user_virtual_address){
+int light_page_flags(char *user_virtual_address, int flags){
     pte_t *pte;
 
     pte = walkpgdir(myproc()->pgdir, user_virtual_address, 0);
 
     if((*pte & PTE_P) == 0) // if page is not assigned
         return -1;
-    pte = (*pte | PTE_PMALLOCED);
-    return 0;
+    *pte |= flags;
+    lcr3(V2P(myproc()->pgdir));
+    return 1;
 }
 
-int check_pmallocked_bit(char *user_virtual_address){
+int check_page_flags(char *user_virtual_address, int flags){
     pte_t *pte;
 
     pte = walkpgdir(myproc()->pgdir, user_virtual_address, 0);
 
-    if((*pte & PTE_P) == 0 || (*pte && PTE_PMALLOCED) == 0) // if page is not assigned
+    if((*pte & PTE_P) == 0 || (*pte & flags) == 0)
         return -1;
-    return 0;
+    return 1;
+}
+int turn_off_page_flags(char *user_virtual_address, int flags){
+    pte_t *pte;
+
+    pte = walkpgdir(myproc()->pgdir, user_virtual_address, 0);
+    if((*pte & PTE_P) == 0) {
+        return -1;
+    }
+    *pte &= ~flags; //turn off the flag
+    lcr3(V2P(myproc()->pgdir));
+    return 1;
 }
 
 

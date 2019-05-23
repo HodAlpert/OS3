@@ -21,6 +21,7 @@
 #define SYS_mkdir  20
 #define SYS_close  21
 #define SYS_yield  22
-#define SYS_light_pmalloc_bit  23
-#define SYS_check_pmallocked_bit 24
+#define SYS_light_page_flags  23
+#define SYS_check_page_flags 24
+#define SYS_turn_off_page_flags 25
 

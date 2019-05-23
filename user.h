@@ -42,3 +42,6 @@ int atoi(const char*);
 void* pmalloc();
 int protect_page(void* ap);
 int pfree(void* ap);
+int             light_page_flags(char *user_virtual_address, int flags);
+int             check_page_flags(char *user_virtual_address, int flags);
+int             turn_off_page_flags(char *user_virtual_address, int flags);

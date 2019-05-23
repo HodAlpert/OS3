@@ -193,8 +193,9 @@ void            switchuvm(struct proc*);
 void            switchkvm(void);
 int             copyout(pde_t*, uint, void*, uint);
 void            clearpteu(pde_t *pgdir, char *uva);
-int             light_pmalloc_bit(char *user_virtual_address);
-int             check_pmallocked_bit(char *user_virtual_address);
+int             light_page_flags(char *user_virtual_address, int flags);
+int             check_page_flags(char *user_virtual_address, int flags);
+int             turn_off_page_flags(char *user_virtual_address, int flags);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

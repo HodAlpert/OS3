@@ -2,9 +2,9 @@
 #include "stat.h"
 #include "user.h"
 #include "param.h"
+#include "mmu.h"
+
 #define PGSIZE          4096    // bytes mapped by a page
-#define PGROUNDUP(sz)  (((sz)+PGSIZE-1) & ~(PGSIZE-1))
-#define PGROUNDDOWN(a) (((a)) & ~(PGSIZE-1))
 
 #define IS_ALIGNED(p)  !((uint)p % 4096)
 #define OFFSET_UNTIL_NEXT_ALIGNED_PAGE(p) (PGSIZE - ((uint)p) % PGSIZE) % PGSIZE
@@ -96,44 +96,57 @@ malloc(uint nbytes) {
     }
 }
 
-int verify_pmallocd(void* ap) {
-    Header * ph = (Header*)ap - 1;
-    uint pgsize_in_headers = (PGSIZE + sizeof(Header) - 1)/sizeof(Header) + 1;
-
-    // Verify that the address has beem pmalloc'd, and that it's the beginning of a page
-    if (!ph->s.pmallocd || ph->s.size != pgsize_in_headers || (uint)ap % PGSIZE != 0) return 0;
+int check_page_was_pmalloced(void *ap) {
+    Header * pHeader = (Header*)ap;
+    uint pgsize_in_headers = PGSIZE / sizeof(Header);
+    // Verify that the address has been pmalloc'd, and that it's the beginning of a page
+    if (!check_page_flags(ap, PTE_PMALLOCED) || pHeader->s.size != pgsize_in_headers || ((uint)ap) % PGSIZE != 0) return 0;
 
     return 1;
 }
 
 int protect_page(void* ap) {
-    if (!check_pmallocked_bit(ap)) return -1;
-    protect(ap, 1);
+    Header * pHeader = (Header*)ap - 1;
+    if (!check_page_was_pmalloced(pHeader)){
+        return -1;
+    }
+    if (turn_off_page_flags((char*)pHeader, PTE_W) < 0) {
+        return -1;
+    }
 
     return 1;
 }
+
+
 
 void * pmalloc() {
     Header *p, *prevp;
     uint nunits;
 
-    nunits = (PGSIZE + sizeof(Header) - 1) / sizeof(Header) + 1;
+    nunits = PGSIZE  / sizeof(Header);
+
     if ((prevp = freep) == 0) {
         base.s.ptr = freep = prevp = &base;
         base.s.size = 0;
     }
     for (p = prevp->s.ptr;; prevp = p, p = p->s.ptr) {
+
         if (IS_ALIGNED(p)){
             if (p->s.size >= nunits) {
-                if (p->s.size == nunits)
+                if (p->s.size == nunits) {
                     prevp->s.ptr = p->s.ptr;
+                }
                 else {
-                    p->s.size -= nunits;
-                    p += p->s.size;
+                    Header * nextp = p + nunits; //assigning space for the current page
+                    nextp->s.size = p->s.size - nunits; // decreasing the space pmalloced from p
+                    nextp = p->s.ptr;
+                    prevp->s.ptr = nextp;
                     p->s.size = nunits;
+                    prevp = nextp;
                 }
                 freep = prevp;
-                //TODO light the bit
+                light_page_flags((char*)p, PTE_PMALLOCED);
+
                 return (void *) (p + 1);
             }//p->s.size >= nunits
         }//IS_ALIGNED(p)
@@ -156,7 +169,8 @@ void * pmalloc() {
 
                 prevp = p;
 
-                //TODO light the bit
+                light_page_flags((char*)p, PTE_PMALLOCED);
+
                 freep = prevp;
                 return (void*)(aligned_page + 1);
             }//p->s.size > required_size
@@ -167,21 +181,30 @@ void * pmalloc() {
             else if(p->s.size == required_size){
                 Header * aligned_page = p + ((OFFSET_UNTIL_NEXT_ALIGNED_PAGE(p) - 1)/ sizeof(Header)) + 1;
 
-
-                uint old_size_of_p = p->s.size;
                 p->s.size = ((OFFSET_UNTIL_NEXT_ALIGNED_PAGE(p) - 1)/ sizeof(Header)) + 1;
 
                 aligned_page->s.size = nunits;
 
                 prevp = p;
 
-                //TODO light the bit
+                light_page_flags((char*)p, PTE_PMALLOCED);
                 freep = prevp;
                 return (void*)(aligned_page + 1);
             }
         }
         if(p == freep)
-            if((p = morecore(nunits)) == 0)
+            if((p = morecore(nunits, 1)) == 0)
                 return 0;
     }
+}
+
+int pfree(void* ap){
+    Header * ph = (Header*)ap - 1;
+    if (!check_page_was_pmalloced(ph)) {
+        return -1;
+    }
+    if (light_page_flags((char *) ph, PTE_W) < 0){
+        return -1;
+    }
+    return 1;
 }

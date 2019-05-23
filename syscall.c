@@ -104,8 +104,9 @@ extern int sys_wait(void);
 extern int sys_write(void);
 extern int sys_uptime(void);
 extern int sys_yield(void);
-extern int sys_light_pmalloc_bit(void);
-extern int sys_check_pmallocked_bit(void);
+extern int sys_light_page_flags(void);
+extern int sys_check_page_flags(void);
+extern int sys_turn_off_page_flags(void);
 
 
 static int (*syscalls[])(void) = {
@@ -131,8 +132,9 @@ static int (*syscalls[])(void) = {
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
 [SYS_yield]   sys_yield,
-[SYS_light_pmalloc_bit] sys_light_pmalloc_bit,
-[SYS_check_pmallocked_bit] sys_check_pmallocked_bit,
+[SYS_light_page_flags] sys_light_page_flags,
+[SYS_check_page_flags] sys_check_page_flags,
+[SYS_turn_off_page_flags] sys_turn_off_page_flags,
 };
 
 void

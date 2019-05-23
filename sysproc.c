@@ -97,18 +97,29 @@ sys_uptime(void)
   return xticks;
 }
 
-int sys_light_pmalloc_bit(void){
+int sys_light_page_flags(void){
     char* addr;
+    int flags;
 
-    if ((argptr(0, (void*)&addr, sizeof(addr)) < 0))return -1;
-    return light_pmalloc_bit(addr);
+    if ((argptr(0, (void*)&addr, sizeof(addr)) < 0 || argint(1, &flags))) return -1;
+    return light_page_flags(addr, flags);
 
 }
 
-int sys_check_pmallocked_bit(void){
+int sys_check_page_flags(void){
     char* addr;
+    int flags;
 
-    if ((argptr(0, (void*)&addr, sizeof(addr)) < 0)) return -1;
-    return check_pmallocked_bit(addr);
+    if ((argptr(0, (void*)&addr, sizeof(addr)) < 0 || argint(1, &flags))) return -1;
+    return check_page_flags(addr, flags);
+
+}
+
+int sys_turn_off_page_flags(void){
+    char* addr;
+    int flags;
+
+    if ((argptr(0, (void*)&addr, sizeof(addr)) < 0 || argint(1, &flags))) return -1;
+    return turn_off_page_flags(addr, flags);
 
 }
