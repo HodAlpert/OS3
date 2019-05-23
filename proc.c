@@ -155,7 +155,8 @@ userinit(void)
 
 // TODO: implement
 char* get_page_to_swap() {
-  return 0;
+  struct proc *p = myproc();
+  return p->resident_pages_stack[(p->resident_pages_stack_loc--) - 1];
 }
 
 // TODO: implement
@@ -240,6 +241,7 @@ fork(void)
   }
   np->sz = curproc->sz;
   np->res_sz = curproc->res_sz;
+  np->resident_pages_stack_loc = curproc->resident_pages_stack_loc;
   np->parent = curproc;
   *np->tf = *curproc->tf;
 

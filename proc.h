@@ -54,6 +54,9 @@ struct proc {
   //Swap file. must initiate with create swap file
   struct file *swapFile;      //page file
   uint swapFileLocation;      // location to write to swap file
+
+  char * resident_pages_stack[16];
+  uint resident_pages_stack_loc;
 };
 
 // Process memory is laid out contiguously, low addresses first:

@@ -98,6 +98,7 @@ exec(char *path, char **argv)
   curproc->pgdir = pgdir;
   curproc->sz = sz;
   curproc->res_sz = curproc->sz ; // TODO: swap if needed
+  curproc->resident_pages_stack_loc = 0;
   curproc->tf->eip = elf.entry;  // main
   curproc->tf->esp = sp;
   switchuvm(curproc);

@@ -48,13 +48,23 @@ void test_pmalloc() {
 }
 
 void test_swap() {
-  void* mem = malloc(PGSIZE * 14);
-  memset(mem, 0, PGSIZE * 14);
-  free(mem);
+  printf(1, "test swap\n");
+  void* mem[13];
+  for (int i = 0; i < 13; ++i) {
+    mem[i] = pmalloc();
+    printf(1, "mem[%d] = %d\n", i, mem[i]);
+  }
+  for (int i = 0; i < 13; ++i) {
+    printf(1, "write to mem[%d]\n", i);
+    memset(mem[i], 2, PGSIZE - 8);
+  }
+  for (int i = 0; i < 13; ++i) {
+    pfree(mem[i]);
+  }
 }
 
 int main() {
   test_pmalloc();
-//  test_swap();
+  test_swap();
   exit();
 }
