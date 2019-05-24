@@ -117,11 +117,11 @@ void* pmalloc() {
   Header * header_loc = (Header *)next_page - 1;
   uint until_next_header = (uint)header_loc - cur_size;
 
-  morecore(until_next_header, 1, 0);
+  if (morecore(until_next_header, 1, 0) == 0) return 0;
 
   // Now we're aligned with the next header
 
-  morecore(PGSIZE + sizeof(Header), 1, 1);
+  if (morecore(PGSIZE + sizeof(Header), 1, 1) == 0) return 0;
 
   Header * p;
   // Find pointer to our new header

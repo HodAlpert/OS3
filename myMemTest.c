@@ -8,7 +8,7 @@ void freeze() {
 
 void test_pmalloc() {
   // To verify that pmalloc is page aligned, and that free'ing works
-  void* ptr1 = malloc(10*PGSIZE + 300);
+  void* ptr1 = malloc(3);
 
   void* new_page = pmalloc();
 
@@ -49,14 +49,17 @@ void test_pmalloc() {
 
 void test_swap() {
   printf(1, "test swap\n");
-  void* mem[13];
-  for (int i = 0; i < 13; ++i) {
-    mem[i] = pmalloc();
+  void* mem[1];
+  for (int i = 0; i < 1; ++i) {
+    if ((mem[i] = pmalloc()) == 0) {
+      printf(1, "pmalloc failed\n");
+      freeze();
+    }
   }
-  for (int i = 0; i < 13; ++i) {
+  for (int i = 0; i < 1; ++i) {
     memset(mem[i], 2, PGSIZE);
   }
-  for (int i = 0; i < 13; ++i) {
+  for (int i = 0; i < 1; ++i) {
     pfree(mem[i]);
   }
   printf(1, "Swap test PASSED\n");
@@ -64,15 +67,18 @@ void test_swap() {
 
 void test_fork() {
   printf(1, "fork test\n");
-  void* mem[13];
+  void* mem[1];
 
   printf(1, "Initializing memory\n");
 
-  for (int i = 0; i < 13; ++i) {
-    mem[i] = pmalloc();
+  for (int i = 0; i < 1; ++i) {
+    if ((mem[i] = pmalloc()) == 0) {
+      printf(1, "pmalloc failed\n");
+      freeze();
+    }
   }
 
-  for (int i = 0; i < 13; ++i) {
+  for (int i = 0; i < 1; ++i) {
     memset(mem[i], 2, PGSIZE);
   }
 
@@ -83,7 +89,7 @@ void test_fork() {
     wait();
   } else {
     printf(1, "Checking memory is the same in child process (swapped pages too)\n");
-    for (int i = 0; i < 13; ++i) {
+    for (int i = 0; i < 1; ++i) {
       char data = ((char *) mem[i])[0];
       if (data != 2) {
         printf(1, "memory corrupted in child process!\n");
@@ -91,7 +97,7 @@ void test_fork() {
       }
     }
 
-    for (int i = 0; i < 13; ++i) {
+    for (int i = 0; i < 1; ++i) {
       pfree(mem[i]);
     }
     exit();
