@@ -8,19 +8,19 @@ void freeze() {
 
 void test_pmalloc() {
   // To verify that pmalloc is page aligned, and that free'ing works
-  void* ptr1 = malloc(3);
+  void* ptr1 = malloc(10*PGSIZE + 300);
 
   void* new_page = pmalloc();
 
   void* ptr2 = malloc(3);
 
-  if (((uint)new_page-8) % PGSIZE) {
+  if ((uint)new_page % PGSIZE) {
     printf(1, "Header NOT page aligned %d! FAIL\n", (uint)new_page);
   } else
     printf(1, "Header page aligned!\n");
 
   // The page is not protected - we should be able to write to it
-  memset(new_page, 0, PGSIZE-8);
+  memset(new_page, 0, PGSIZE);
 
   protect_page(new_page);
 
@@ -42,7 +42,7 @@ void test_pmalloc() {
   pfree(new_page);
 
   // The page was free'd, but it's still ours. It shouldn't be protected now
-  memset(new_page, 0, PGSIZE-8);
+  memset(new_page, 0, PGSIZE);
 
   printf(1, "pmalloc test PASSED!\n");
 }
@@ -54,7 +54,7 @@ void test_swap() {
     mem[i] = pmalloc();
   }
   for (int i = 0; i < 13; ++i) {
-    memset(mem[i], 2, PGSIZE - 8);
+    memset(mem[i], 2, PGSIZE);
   }
   for (int i = 0; i < 13; ++i) {
     pfree(mem[i]);
@@ -73,7 +73,7 @@ void test_fork() {
   }
 
   for (int i = 0; i < 13; ++i) {
-    memset(mem[i], 2, PGSIZE - 8);
+    memset(mem[i], 2, PGSIZE);
   }
 
   printf(1, "Forking\n");
