@@ -155,11 +155,12 @@ userinit(void)
 }
 
 char* get_page_to_swap() {
-  struct proc *p = myproc();
 #ifdef LIFO
+  struct proc *p = myproc();
   return p->resident_pages_stack[(p->resident_pages_stack_loc--) - 1];
 #endif
 #ifdef SCFIFO
+  struct proc *p = myproc();
   uint i = 0;
   pte_t *pte;
   uint found = 0;
@@ -198,6 +199,9 @@ char* get_page_to_swap() {
 
   return page;
 #endif
+#ifdef NONE
+  return 0;
+#endif
 }
 
 // TODO: zero swapFilePages when swapping back in
@@ -235,6 +239,10 @@ void swap_out_pages(int num_pages) {
 }
 
 uint handle_pgflt() {
+#ifdef NONE
+  return 0;
+#endif
+
   pte_t *pte;
   uint i;
 
@@ -292,14 +300,16 @@ growproc(int n)
 {
   uint sz;
   struct proc *curproc = myproc();
-
   sz = curproc->sz;
 
+#ifndef NONE
   uint overall_pages = (sz + n) / PGSIZE;
   if (overall_pages > MAX_TOTAL_PAGES) return -1;
 
   int pages_to_swap = (int)(curproc->res_sz + n) / PGSIZE - MAX_PSYC_PAGES; // @@@ Need to initialize res_sz
   swap_out_pages(pages_to_swap);
+
+#endif
 
   if(n > 0){
     if((sz = allocuvm(curproc->pgdir, sz, sz + n)) == 0)

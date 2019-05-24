@@ -223,7 +223,6 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
 {
   char *mem;
   uint a;
-  struct proc* p = myproc();
 
   if(newsz >= KERNBASE)
     return 0;
@@ -240,9 +239,11 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
     }
 
 #ifdef LIFO
+    struct proc* p = myproc();
     p->resident_pages_stack[p->resident_pages_stack_loc++] = (char *) a;
 #endif
 #ifdef SCFIFO
+    struct proc* p = myproc();
     uint i;
     // Find the first empty spot
     for (i = 0; p->resident_pages_stack[i] != 0 && i <= MAX_PSYC_PAGES; ++i);
