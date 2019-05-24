@@ -100,7 +100,7 @@ int check_page_was_pmalloced(void *ap) {
     Header * pHeader = (Header*)ap;
     uint pgsize_in_headers = PGSIZE / sizeof(Header);
     // Verify that the address has been pmalloc'd, and that it's the beginning of a page
-    if (!check_page_flags(ap, PTE_PMALLOCED) || pHeader->s.size != pgsize_in_headers || ((uint)ap) % PGSIZE != 0) return 0;
+    if (!check_page_flags(ap, PTE_P | PTE_PMALLOCED) || pHeader->s.size != pgsize_in_headers || ((uint)ap) % PGSIZE != 0) return 0;
 
     return 1;
 }

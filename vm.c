@@ -114,6 +114,12 @@ static struct kmap {
  { (void*)DEVSPACE, DEVSPACE,      0,         PTE_W}, // more devices
 };
 
+void swap_page(struct proc *proc, uint a, const struct pages_info *page_to_swap_to);
+
+void move_page_back_from_disk(const struct proc *proc, const char *swapped_virtual_address,
+                              const struct pages_info *swapped_page, const char *mem,
+                              const struct pages_info *page_info);
+
 // Set up kernel part of a page table.
 pde_t*
 setupkvm(void)
@@ -221,6 +227,7 @@ loaduvm(pde_t *pgdir, char *addr, struct inode *ip, uint offset, uint sz)
 int
 allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
 {
+  struct proc * proc = myproc();
   char *mem;
   uint a;
 
@@ -246,6 +253,22 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
     }
   }
   return newsz;
+}
+
+void swap_page(struct proc *proc, uint a, const struct pages_info *page_to_swap_to) {
+    struct pages_info *page_to_swap_from = find_a_page_to_swap(proc);
+    int index = proc->swapped_pages_stack_pointer++;
+    // writing allocated page to file
+    writeToSwapFile(proc, (char *) page_to_swap_from->virtual_address, index * PGSIZE, PGSIZE);
+    // initializing new swapped page struct
+    init_page_info(proc, page_to_swap_from->virtual_address, page_to_swap_to, index);
+    // clearing swapped page from memory
+    pte_t *pte = walkpgdir(proc->pgdir, (char *) page_to_swap_from->virtual_address, 0);
+    kfree((char *) PTE_ADDR(*pte));
+    *pte |= PTE_PG;
+    *pte &= ~PTE_P;
+    lcr3(V2P(myproc()->pgdir));
+    init_page_info(proc, a, page_to_swap_from, 0);
 }
 
 // Deallocate user pages to bring the process size from oldsz to
@@ -388,8 +411,6 @@ int light_page_flags(char *user_virtual_address, int flags){
 
     pte = walkpgdir(myproc()->pgdir, user_virtual_address, 0);
 
-    if((*pte & PTE_P) == 0) // if page is not assigned
-        return -1;
     *pte |= flags;
     lcr3(V2P(myproc()->pgdir));
     return 1;
@@ -400,22 +421,55 @@ int check_page_flags(char *user_virtual_address, int flags){
 
     pte = walkpgdir(myproc()->pgdir, user_virtual_address, 0);
 
-    if((*pte & PTE_P) == 0 || (*pte & flags) == 0)
-        return -1;
+    if((*pte & flags) == 0)
+        return 0;
     return 1;
 }
 int turn_off_page_flags(char *user_virtual_address, int flags){
     pte_t *pte;
 
     pte = walkpgdir(myproc()->pgdir, user_virtual_address, 0);
-    if((*pte & PTE_P) == 0) {
-        return -1;
-    }
+
     *pte &= ~flags; //turn off the flag
     lcr3(V2P(myproc()->pgdir));
     return 1;
 }
 
+void handle_page_miss(const char * virtual_address){
+    struct proc * proc = myproc();
+
+    char* swapped_virtual_address = (char*)PGROUNDDOWN((uint) virtual_address);
+    struct pages_info * swapped_page = find_page_by_virtual_address(proc, swapped_virtual_address);
+    if (swapped_page == 0)
+        panic("could not find swapped page struct");
+    char*  mem = kalloc();
+    if(mem == 0) {
+        panic("out of memory\n");
+    }
+    struct pages_info * page_info = find_free_page_entry(proc->allocated_page_info);
+    if (page_info){ // if there is a place to put the new page in the ram
+        move_page_back_from_disk(proc, swapped_virtual_address, swapped_page, mem, page_info);
+    }//
+}
+
+void move_page_back_from_disk(const struct proc *proc, const char *swapped_virtual_address,
+                              const struct pages_info *swapped_page, const char *mem,
+                              const struct pages_info *page_info) {
+    init_page_info(proc, swapped_virtual_address, page_info, 0);
+    if (mappages(proc->pgdir, swapped_virtual_address, PGSIZE, V2P(mem), PTE_P | PTE_W | PTE_U) < 0) {
+        cprintf("could not map swapped memory back\n");
+        kfree(mem);
+        return;
+    }
+    turn_off_page_flags(swapped_virtual_address, PTE_PG);
+    char page_data[PGSIZE];
+
+    if (readFromSwapFile(proc, page_data, swapped_page->page_offset_in_swapfile, PGSIZE) < 0)
+        cprintf("could not read from swap file\n");
+    memmove((void *) swapped_virtual_address, page_data, PGSIZE);
+    init_page_info(proc, swapped_virtual_address, page_info, 0); // initializing swapped back page
+    memset(swapped_page, 0, sizeof(struct pages_info)); // clearing old swapped page
+}
 
 //PAGEBREAK!
 // Blank page.

@@ -90,7 +90,7 @@ found:
   p->pid = nextpid++;
 
   release(&ptable.lock);
-
+    createSwapFile(p);
   // Allocate kernel stack.
   if((p->kstack = kalloc()) == 0){
     p->state = UNUSED;
@@ -496,6 +496,36 @@ kill(int pid)
   return -1;
 }
 
+struct pages_info * find_free_page_entry(struct pages_info * pages_info_table) {
+    for (int i = 0; i< MAX_PSYC_PAGES; i++){
+        if (pages_info_table[i].allocated) // if we found a page without allocation
+            return &pages_info_table[i];
+    }
+    return 0;
+}
+
+void init_page_info(const struct proc *proc, char* a, struct pages_info *page, int index) {
+    page->allocated = 1;
+    page->virtual_address = a;
+    page->pgdir = proc->pgdir;
+    page->page_offset_in_swapfile = index * PGSIZE;
+}
+
+struct pages_info * find_page_by_virtual_address(struct proc * proc, char* a){
+    for (int i = 0; i< MAX_PSYC_PAGES; i++){
+        if (proc->swapped_pages[i].allocated && proc->swapped_pages[i].virtual_address == a) // if we found a page with the right address
+            return &proc->swapped_pages[i];
+    }
+    return 0;
+}
+//TODO to be implemented in later tasks
+struct pages_info *find_a_page_to_swap(struct proc *proc) {
+    for (int i = 0; i< MAX_PSYC_PAGES; i++){
+        if (proc->allocated_page_info[i].allocated) // if we found an allocated page
+            return &proc->allocated_page_info[i];
+    }
+    return 0;
+}
 //PAGEBREAK: 36
 // Print a process listing to console.  For debugging.
 // Runs when user types ^P on console.
