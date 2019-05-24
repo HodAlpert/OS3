@@ -52,19 +52,57 @@ void test_swap() {
   void* mem[13];
   for (int i = 0; i < 13; ++i) {
     mem[i] = pmalloc();
-    printf(1, "mem[%d] = %d\n", i, mem[i]);
   }
   for (int i = 0; i < 13; ++i) {
-    printf(1, "write to mem[%d]\n", i);
     memset(mem[i], 2, PGSIZE - 8);
   }
   for (int i = 0; i < 13; ++i) {
     pfree(mem[i]);
   }
+  printf(1, "Swap test PASSED\n");
+}
+
+void test_fork() {
+  printf(1, "fork test\n");
+  void* mem[13];
+
+  printf(1, "Initializing memory\n");
+
+  for (int i = 0; i < 13; ++i) {
+    mem[i] = pmalloc();
+  }
+
+  for (int i = 0; i < 13; ++i) {
+    memset(mem[i], 2, PGSIZE - 8);
+  }
+
+  printf(1, "Forking\n");
+  int pid = fork();
+
+  if (pid > 0) {
+    wait();
+  } else {
+    printf(1, "Checking memory is the same in child process (swapped pages too)\n");
+    for (int i = 0; i < 13; ++i) {
+      char data = ((char *) mem[i])[0];
+      if (data != 2) {
+        printf(1, "memory corrupted in child process!\n");
+        freeze();
+      }
+    }
+
+    for (int i = 0; i < 13; ++i) {
+      pfree(mem[i]);
+    }
+    exit();
+  }
+
+  printf(1, "Fork test PASSED\n");
 }
 
 int main() {
   test_pmalloc();
   test_swap();
+  test_fork();
   exit();
 }

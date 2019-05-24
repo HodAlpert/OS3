@@ -6,6 +6,7 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#include "stat.h"
 
 struct {
   struct spinlock lock;
@@ -289,7 +290,12 @@ fork(void)
   }
   np->sz = curproc->sz;
   np->res_sz = curproc->res_sz;
+
   np->resident_pages_stack_loc = curproc->resident_pages_stack_loc;
+  memmove(np->resident_pages_stack, curproc->resident_pages_stack, sizeof(char*)*16);
+  memmove(np->swapFilePages, curproc->swapFilePages, sizeof(char*)*16);
+
+
   np->parent = curproc;
   *np->tf = *curproc->tf;
 
@@ -306,6 +312,16 @@ fork(void)
   pid = np->pid;
 
   createSwapFile(np);
+
+  if (curproc->swapFile) {
+    struct stat st;
+    filestat(curproc->swapFile, &st);
+    for (i = 0; i < st.size; i += 1024) {
+      char buf[1024];
+      readFromSwapFile(curproc, buf, i, 1024);
+      writeToSwapFile(np, buf, i, 1024);
+    }
+  }
 
   acquire(&ptable.lock);
 
