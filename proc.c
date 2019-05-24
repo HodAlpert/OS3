@@ -239,14 +239,9 @@ void swap_out_pages(int num_pages) {
 }
 
 uint handle_pgflt() {
-#ifdef NONE
-  return 0;
-#endif
-
+  struct proc *p = myproc();
   pte_t *pte;
   uint i;
-
-  struct proc *p = myproc();
 
   // The address that caused the page fault, and it's page
   uint addr = rcr2();
@@ -254,6 +249,17 @@ uint handle_pgflt() {
 
   // Find the PTE of the address
   pte = walkpgdir(p->pgdir, (void *) addr, 0);
+
+  // The page was not paged out
+  if (*pte & PTE_PMAL) {
+    p->tf->trapno = 13;
+    return 0;
+  }
+
+
+#ifdef NONE
+  return 0;
+#endif
 
   // The page was not paged out
   if (!(*pte & PTE_PG)) return 0;
