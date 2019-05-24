@@ -192,6 +192,49 @@ void swap_out_pages(int num_pages) {
   lcr3(V2P(p->pgdir)); // flush
 }
 
+uint handle_pgflt() {
+  pte_t *pte;
+  uint i;
+
+  struct proc *p = myproc();
+
+  // The address that caused the page fault, and it's page
+  uint addr = rcr2();
+  char* page = (char*)(PGROUNDDOWN(addr));
+
+  // Find the PTE of the address
+  pte = walkpgdir(p->pgdir, (void *) addr, 0);
+
+  // The page was not paged out
+  if (!(*pte & PTE_PG)) return 0;
+
+  // Set the page as present, and not paged out
+  clearpte((char *) addr, PTE_PG);
+  setpte((char *) addr, PTE_P);
+  lcr3(V2P(p->pgdir));
+
+  // locate page in the swap file
+  for (i = 0; p->swapFilePages[i] != page && i <= MAX_PSYC_PAGES; i++);
+
+  if (i > MAX_PSYC_PAGES)
+    panic("Couldn't find page in the swap file");
+
+  // Read from swap file into memory
+  readFromSwapFile(p, page, i*PGSIZE, PGSIZE);
+  p->swapFilePages[i] = 0;
+
+  // enlarge resident size
+  p->res_sz += PGSIZE;
+
+  // Swap out another page if needed
+  swap_out_pages(p->res_sz / PGSIZE - MAX_PSYC_PAGES);
+
+  // Push the page to the stack of swapped in pages
+  p->resident_pages_stack[p->resident_pages_stack_loc++] = page;
+
+  return 1;
+}
+
 // Grow current process's memory by n bytes.
 // Return 0 on success, -1 on failure.
 int

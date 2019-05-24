@@ -10,6 +10,8 @@ struct sleeplock;
 struct stat;
 struct superblock;
 
+typedef uint pte_t;
+
 // bio.c
 void            binit(void);
 struct buf*     bread(uint, uint);
@@ -124,6 +126,7 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
+uint            handle_pgflt();
 
 // swtch.S
 void            swtch(struct context**, struct context*);
@@ -196,6 +199,7 @@ void            clearpteu(pde_t *pgdir, char *uva);
 void            clearpte(char *uva, uint flags);
 void            setpte(char *uva, uint flags);
 int             ispteflagsset(char *uva, uint flags);
+pte_t *  walkpgdir(pde_t *pgdir, const void *va, int alloc);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
