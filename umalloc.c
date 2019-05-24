@@ -99,6 +99,11 @@ malloc(uint nbytes) {
 void* pmalloc() {
   Header *p;
 
+  if(freep == 0){
+    base.s.ptr = freep = &base;
+    base.s.size = 0;
+  }
+
   morecore(PGSIZE/sizeof(Header), 1);
 
   p = (Header*)malloc_inner(PGSIZE - sizeof(Header), 1) - 1;
