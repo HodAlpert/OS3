@@ -156,7 +156,12 @@ userinit(void)
 
 char* get_page_to_swap() {
   struct proc *p = myproc();
+#ifdef LIFO
   return p->resident_pages_stack[(p->resident_pages_stack_loc--) - 1];
+#endif
+#ifdef SCFIFO
+  return 0;
+#endif
 }
 
 // TODO: zero swapFilePages when swapping back in
@@ -230,8 +235,10 @@ uint handle_pgflt() {
   // Swap out another page if needed
   swap_out_pages(p->res_sz / PGSIZE - MAX_PSYC_PAGES);
 
+#ifdef LIFO
   // Push the page to the stack of swapped in pages
   p->resident_pages_stack[p->resident_pages_stack_loc++] = page;
+#endif
 
   return 1;
 }

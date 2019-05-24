@@ -82,3 +82,5 @@ add_executable(Ass3
         x86.h
         zombie.c
         myMemTest.c)
+
+add_compile_definitions(LIFO)
