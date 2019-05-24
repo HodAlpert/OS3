@@ -66,7 +66,6 @@ struct proc {
   struct file *swapFile;      //page file
   struct pages_info allocated_page_info[MAX_PSYC_PAGES];
   struct pages_info swapped_pages[MAX_PSYC_PAGES];
-  uint swapped_pages_stack_pointer; //a number who shows how many swapped files are currently in the swapped pages struct
 };
 /**
  * searches proc->allocated_page_info entry's and looking for a non allocated entry.
@@ -94,6 +93,7 @@ struct pages_info * find_a_page_to_swap(struct proc * proc);
 void init_page_info(const struct proc *proc, char* a, struct pages_info *page, int index);
 
 struct pages_info * find_page_by_virtual_address(struct proc * proc, char* a);
+int  find_free_page_entry_index(struct pages_info * pages_info_table);
 
 // Process memory is laid out contiguously, low addresses first:
 //   text

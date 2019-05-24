@@ -503,6 +503,13 @@ struct pages_info * find_free_page_entry(struct pages_info * pages_info_table) {
     }
     return 0;
 }
+int  find_free_page_entry_index(struct pages_info * pages_info_table) {
+    for (int i = 0; i< MAX_PSYC_PAGES; i++){
+        if (pages_info_table[i].allocated) // if we found a page without allocation
+            return i;
+    }
+    return 0;
+}
 
 void init_page_info(const struct proc *proc, char* a, struct pages_info *page, int index) {
     page->allocated = 1;
