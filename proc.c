@@ -160,7 +160,43 @@ char* get_page_to_swap() {
   return p->resident_pages_stack[(p->resident_pages_stack_loc--) - 1];
 #endif
 #ifdef SCFIFO
-  return 0;
+  uint i = 0;
+  pte_t *pte;
+  uint found = 0;
+  char* page = 0;
+
+  while (!found) {
+    // Get next page in the queue
+    page = p->resident_pages_stack[i];
+
+    // If the entry in the queue is empty, continue
+    if (page == 0) {
+      i = (i + 1) % MAX_PSYC_PAGES;
+      continue;
+    }
+
+    // Find the page's pte entry
+    pte = walkpgdir(p->pgdir, page, 0);
+
+    // The page was accessed in the last time tick
+    if (*pte & PTE_A) {
+      // zero the accessed flag and give it a second chance
+      clearpte(page, PTE_A);
+      i = (i + 1) % MAX_PSYC_PAGES;
+    } else {
+      found = 1;
+    }
+  }
+
+  // Push back all the queue from i forward
+  for (; i < MAX_PSYC_PAGES - 1; ++i) {
+    p->resident_pages_stack[i] = p->resident_pages_stack[i + 1];
+  }
+
+  // Set the last item in the queue to 0 - free spot
+  p->resident_pages_stack[15] = 0;
+
+  return page;
 #endif
 }
 
@@ -238,6 +274,12 @@ uint handle_pgflt() {
 #ifdef LIFO
   // Push the page to the stack of swapped in pages
   p->resident_pages_stack[p->resident_pages_stack_loc++] = page;
+#endif
+#ifdef SCFIFO
+  // Find the first empty spot
+  for (i = 0; p->resident_pages_stack[i] != 0 && i <= MAX_PSYC_PAGES; ++i);
+  if (i > MAX_PSYC_PAGES) panic("handle_pgflt couldn't find free spot");
+  p->resident_pages_stack[i] = page;
 #endif
 
   return 1;

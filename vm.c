@@ -242,7 +242,13 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
 #ifdef LIFO
     p->resident_pages_stack[p->resident_pages_stack_loc++] = (char *) a;
 #endif
-
+#ifdef SCFIFO
+    uint i;
+    // Find the first empty spot
+    for (i = 0; p->resident_pages_stack[i] != 0 && i <= MAX_PSYC_PAGES; ++i);
+    if (i > MAX_PSYC_PAGES) panic("allocuvm couldn't find free spot");
+    p->resident_pages_stack[i] = (char*)a;
+#endif
 
     memset(mem, 0, PGSIZE);
     if(mappages(pgdir, (char*)a, PGSIZE, V2P(mem), PTE_W|PTE_U) < 0){
