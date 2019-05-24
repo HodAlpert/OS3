@@ -97,8 +97,19 @@ exec(char *path, char **argv)
   oldpgdir = curproc->pgdir;
   curproc->pgdir = pgdir;
   curproc->sz = sz;
-  curproc->res_sz = curproc->sz ; // TODO: swap if needed
+
+  curproc->res_sz = curproc->sz ;
+
+  // Mark no pages are swapped
+  memset(curproc->resident_pages_stack, 0, sizeof(char*)*16);
   curproc->resident_pages_stack_loc = 0;
+
+  // reset swap file
+  removeSwapFile(curproc);
+  createSwapFile(curproc);
+  memset(curproc->swapFilePages, 0, sizeof(char*) * 16);
+
+
   curproc->tf->eip = elf.entry;  // main
   curproc->tf->esp = sp;
   switchuvm(curproc);
