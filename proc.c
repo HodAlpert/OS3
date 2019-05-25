@@ -116,6 +116,38 @@ found:
   return p;
 }
 
+void print_proc_mem(const struct proc *p) {
+  static char *states[] = {
+          [UNUSED]    "unused",
+          [EMBRYO]    "embryo",
+          [SLEEPING]  "sleep ",
+          [RUNNABLE]  "runble",
+          [RUNNING]   "run   ",
+          [ZOMBIE]    "zombie"
+  };
+  int i;
+  char *state;
+  uint pc[10];
+
+
+  if(p->state >= 0 && p->state < NELEM(states) && states[p->state])
+    state = states[p->state];
+  else
+    state = "???";
+  cprintf("%d %s %s ", p->pid, state, p->name);
+
+  uint paged_out = (p->sz - p->res_sz) / PGSIZE;
+
+  cprintf("%d %d %d %d %d", p->sz, paged_out, p->protected_pages, p->page_faults, p->total_paged_out);
+
+  if(p->state == SLEEPING){
+    getcallerpcs((uint*)p->context->ebp+2, pc);
+    for(i=0; i<10 && pc[i] != 0; i++)
+      cprintf(" %p", pc[i]);
+  }
+  cprintf("\n");
+}
+
 //PAGEBREAK: 32
 // Set up first user process.
 void
@@ -125,7 +157,7 @@ userinit(void)
   extern char _binary_initcode_start[], _binary_initcode_size[];
 
   p = allocproc();
-  
+
   initproc = p;
   if((p->pgdir = setupkvm()) == 0)
     panic("userinit: out of memory?");
@@ -414,6 +446,10 @@ exit(void)
   struct proc *p;
   int fd;
 
+#ifdef VERBOSE_PRINT
+  print_proc_mem(curproc);
+#endif
+
   if(curproc == initproc)
     panic("init exiting");
 
@@ -460,7 +496,7 @@ wait(void)
   struct proc *p;
   int havekids, pid;
   struct proc *curproc = myproc();
-  
+
   acquire(&ptable.lock);
   for(;;){
     // Scan through table looking for exited children.
@@ -510,7 +546,7 @@ scheduler(void)
   struct proc *p;
   struct cpu *c = mycpu();
   c->proc = 0;
-  
+
   for(;;){
     // Enable interrupts on this processor.
     sti();
@@ -603,7 +639,7 @@ void
 sleep(void *chan, struct spinlock *lk)
 {
   struct proc *p = myproc();
-  
+
   if(p == 0)
     panic("sleep");
 
@@ -688,18 +724,7 @@ kill(int pid)
 void
 procdump(void)
 {
-  static char *states[] = {
-  [UNUSED]    "unused",
-  [EMBRYO]    "embryo",
-  [SLEEPING]  "sleep ",
-  [RUNNABLE]  "runble",
-  [RUNNING]   "run   ",
-  [ZOMBIE]    "zombie"
-  };
-  int i;
   struct proc *p;
-  char *state;
-  uint pc[10];
 
   uint total_pages = (PHYSTOP - 4*1024*1024) / PGSIZE;
   uint free_pages = total_pages;
@@ -707,24 +732,10 @@ procdump(void)
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->state == UNUSED)
       continue;
-    if(p->state >= 0 && p->state < NELEM(states) && states[p->state])
-      state = states[p->state];
-    else
-      state = "???";
-    cprintf("%d %s %s ", p->pid, state, p->name);
 
-    uint paged_out = (p->sz - p->res_sz) / PGSIZE;
-
-    cprintf("%d %d %d %d %d", p->sz, paged_out, p->protected_pages, p->page_faults, p->total_paged_out);
+    print_proc_mem(p);
 
     free_pages -= p->sz / PGSIZE;
-
-    if(p->state == SLEEPING){
-      getcallerpcs((uint*)p->context->ebp+2, pc);
-      for(i=0; i<10 && pc[i] != 0; i++)
-        cprintf(" %p", pc[i]);
-    }
-    cprintf("\n");
   }
 
   cprintf("%d / %d free pages in the system\n", free_pages, total_pages);
