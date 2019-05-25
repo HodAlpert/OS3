@@ -701,6 +701,9 @@ procdump(void)
   char *state;
   uint pc[10];
 
+  uint total_pages = (PHYSTOP - 4*1024*1024) / PGSIZE;
+  uint free_pages = total_pages;
+
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->state == UNUSED)
       continue;
@@ -714,6 +717,8 @@ procdump(void)
 
     cprintf("%d %d %d %d %d", p->sz, paged_out, p->protected_pages, p->page_faults, p->total_paged_out);
 
+    free_pages -= p->sz / PGSIZE;
+
     if(p->state == SLEEPING){
       getcallerpcs((uint*)p->context->ebp+2, pc);
       for(i=0; i<10 && pc[i] != 0; i++)
@@ -721,4 +726,6 @@ procdump(void)
     }
     cprintf("\n");
   }
+
+  cprintf("%d / %d free pages in the system\n", free_pages, total_pages);
 }
