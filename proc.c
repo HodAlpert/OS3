@@ -363,6 +363,10 @@ fork(void)
   memmove(np->resident_pages_stack, curproc->resident_pages_stack, sizeof(char*)*16);
   memmove(np->swapFilePages, curproc->swapFilePages, sizeof(char*)*16);
 
+  np->protected_pages = curproc->protected_pages;
+  np->page_faults = 0;
+  np->total_paged_out = 0;
+
 
   np->parent = curproc;
   *np->tf = *curproc->tf;
