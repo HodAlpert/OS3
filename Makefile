@@ -241,6 +241,17 @@ qemu-nox-gdb: fs.img xv6.img .gdbinit
 # rename it to rev0 or rev1 or so on and then
 # check in that version.
 
+# if the SELECTION macro is omitted, secondchance FIFOshould be used as default.
+ifndef SELECTION
+SELECTION=SCFIFO
+endif
+
+# If the VERBOSE_PRINTmacro is omitted, FALSE is used as the default valu
+ifndef VERBOSE_PRIN
+VERBOSE_PRIN=FALSE;
+endif
+
+
 EXTRA=\
 	mkfs.c ulib.c user.h cat.c echo.c forktest.c grep.c kill.c\
 	ln.c ls.c mkdir.c rm.c stressfs.c usertests.c wc.c zombie.c\

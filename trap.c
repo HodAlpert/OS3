@@ -78,6 +78,7 @@ trap(struct trapframe *tf)
     lapiceoi();
     break;
   case T_PGFLT:
+      myproc()->number_of_PGFLT++;
       if (check_page_flags((char*) rcr2(), PTE_W))
           tf->trapno = T_GPFLT;
       else if (check_page_flags((char *) rcr2(), PTE_PG)) {

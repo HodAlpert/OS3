@@ -40,6 +40,7 @@ struct pages_info {
     char * virtual_address;         // page's virtual address
     pde_t* pgdir;                   // Page table
     uint page_offset_in_swapfile;   // page's offset in the swapfile (if swapped)
+    uint creation_time;              // for FIFO and LIFO
 };
 
 
@@ -61,11 +62,19 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
-
+  uint time;                   // for LIFO and FIFO selection
   //Swap file. must initiate with create swap file
   struct file *swapFile;      //page file
   struct pages_info allocated_page_info[MAX_PSYC_PAGES];
   struct pages_info swapped_pages[MAX_PSYC_PAGES];
+  int number_of_allocated_pages;
+  int number_of_curr_paged_out_pages;
+  int number_of_total_pages_out;
+  int number_of_write_protectes_pages;
+  int number_of_PGFLT;
+  int number_of_curr_free_pages;
+  int number_of_total_available_pages;
+
 };
 /**
  * searches proc->allocated_page_info entry's and looking for a non allocated entry.

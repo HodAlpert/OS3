@@ -295,6 +295,7 @@ deallocuvm(pde_t *pgdir, uint oldsz, uint newsz)
 {
   pte_t *pte;
   uint a, pa;
+  struct proc* proc  =myproc();
 
   if(newsz >= oldsz)
     return oldsz;
@@ -310,6 +311,13 @@ deallocuvm(pde_t *pgdir, uint oldsz, uint newsz)
         panic("kfree");
       char *v = P2V(pa);
       kfree(v);
+      for (int i = 0; i< MAX_PSYC_PAGES; i++){
+          if (proc->allocated_page_info[i].allocated && proc->allocated_page_info[i].virtual_address == a && proc->allocated_page_info[i].pgdir == pgdir){
+              proc->allocated_page_info[i].allocated = 0;
+              proc->number_of_allocated_pages--;
+
+          }
+      }
       *pte = 0;
     }
   }
@@ -365,6 +373,11 @@ copyuvm(pde_t *pgdir, uint sz)
       panic("copyuvm: pte should exist");
     if(!(*pte & PTE_P))
       panic("copyuvm: page not present");
+    if(*pte & PTE_PG ==1){
+        *pte|=PTE_PG;
+        *pte &=~PTE_P;
+        lcr3(pgdir);
+    }
     pa = PTE_ADDR(*pte);
     flags = PTE_FLAGS(*pte);
     if((mem = kalloc()) == 0)
@@ -461,10 +474,18 @@ void handle_page_miss(const char * virtual_address){
     if(mem == 0) {
         panic("out of memory\n");
     }
-    struct pages_info * page_info = find_free_page_entry(proc->allocated_page_info);
-    if (page_info){ // if there is a place to put the new page in the ram
-        move_page_back_from_disk(proc, swapped_virtual_address, swapped_page, mem, page_info);
-    }//
+    struct pages_info * free_page = find_free_page_entry(proc->allocated_page_info);
+    if (free_page){ // if there is a place to put the new page in the ram
+        move_page_back_from_disk(proc, swapped_virtual_address, swapped_page, mem, free_page);
+    }else{
+        struct pages_info *page_to_swap_to = find_free_page_entry(proc->swapped_pages);
+        if (!page_to_swap_to) {
+            cprintf("process exceeds process memory limits\n");
+            deallocuvm(pgdir, newsz, oldsz);
+            return 0;
+        }
+        swap_page(proc, swapped_virtual_address, page_to_swap_to);
+    }
 }
 
 void move_page_back_from_disk(struct proc *proc, char *swapped_virtual_address,
@@ -482,8 +503,8 @@ void move_page_back_from_disk(struct proc *proc, char *swapped_virtual_address,
     if (readFromSwapFile(proc, page_data, swapped_page->page_offset_in_swapfile, PGSIZE) < 0)
         cprintf("could not read from swap file\n");
     memmove((void *) swapped_virtual_address, page_data, PGSIZE);//moving
-    init_page_info(proc, swapped_virtual_address, page_info, 0); // initializing swapped back page
-    memset(swapped_page, 0, sizeof(struct pages_info)); // clearing old swapped page
+    init_page_info(proc, swapped_virtual_address, page_info, 0); // initializing swapped back page ////why?
+    memset(swapped_page, 0, sizeof(struct pages_info)); // clearing old swapped page            ////why?
 }
 
 //PAGEBREAK!

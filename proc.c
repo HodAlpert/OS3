@@ -6,6 +6,8 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#ifndef SELECTION  //TODO define better :P no idea how
+#ifndef VERBOSE  //TODO define better :P no idea how
 
 struct {
   struct spinlock lock;
@@ -196,6 +198,26 @@ fork(void)
     np->state = UNUSED;
     return -1;
   }
+
+
+   // copying swapFile and updating pgdir to np->pgdir
+  char page_data[PGSIZE];
+  for (int i = 0; i< MAX_PSYC_PAGES; i++){
+    if(np->allocated_page_info[i] != 0)
+       np->allocated_page_info[i].pgdir= np->pgdir;
+    if(np->swapped_pages[i] != 0){
+       np->swapped_pages[i].pgdir= np->pgdir;
+       if (readFromSwapFile(proc, page_data,np->swapped_pages[i].page_offset_in_swapfile, PGSIZE) < 0)
+           cprintf("could not read from swap file\n");
+       writeToSwapFile(np,np->swapped_pages[i].virtual_address,i*PGSIZE,PGSIZE);
+    }
+
+
+
+  }
+
+
+
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
@@ -242,6 +264,10 @@ exit(void)
     }
   }
 
+  // close swapfile
+  removeSwapFile(curproc);
+
+
   begin_op();
   iput(curproc->cwd);
   end_op();
@@ -263,6 +289,8 @@ exit(void)
 
   // Jump into the scheduler, never to return.
   curproc->state = ZOMBIE;
+  if(VERBOSE)
+    cprintf("%d / %d free pages in the system", p->number_of_curr_free_pages, p->number_of_total_available_pages);
   sched();
   panic("zombie exit");
 }
@@ -294,8 +322,21 @@ wait(void)
         p->parent = 0;
         p->name[0] = 0;
         p->killed = 0;
+        p->number_of_PGFLT=0;
+        p->number_of_allocated_pages=0;
+        p->number_of_total_pages_out=0;
+        p->number_of_write_protectes_pages=0;
+        p->number_of_curr_paged_out_pages=0;
+        p->number_of_curr_free_pages=0;
+        p->number_of_total_available_pages=0;
         p->state = UNUSED;
         release(&ptable.lock);
+        for (int i = 0; i< MAX_PSYC_PAGES; i++){    //maybe need to do array = 0 instead of array[i]=0?
+          p->allocated_page_info[i]=0;
+          p->number_of_allocated_pages--;
+          p->swapped_pages[i] =0;
+        }
+
         return pid;
       }
     }
@@ -513,26 +554,62 @@ int  find_free_page_entry_index(struct pages_info * pages_info_table) {
 
 void init_page_info(const struct proc *proc, char* a, struct pages_info *page, int index) {
     page->allocated = 1;
+    proc->number_of_allocated_pages++;
     page->virtual_address = a;
     page->pgdir = proc->pgdir;
     page->page_offset_in_swapfile = index * PGSIZE;
+    page->creation_time =  proc.time;
+    proc.time++;
 }
 
 struct pages_info * find_page_by_virtual_address(struct proc * proc, char* a){
     for (int i = 0; i< MAX_PSYC_PAGES; i++){
-        if (proc->swapped_pages[i].allocated && proc->swapped_pages[i].virtual_address == a) // if we found a page with the right address
+        if (proc->swapped_pages[i].allocated && proc->swapped_pages[i].virtual_address == a && proc->swapped_pages[i].pgdir == proc->pgdir) // if we found a page with the right address
             return &proc->swapped_pages[i];
     }
     return 0;
 }
-//TODO to be implemented in later tasks
+
 struct pages_info *find_a_page_to_swap(struct proc *proc) {
-    for (int i = 0; i< MAX_PSYC_PAGES; i++){
-        if (proc->allocated_page_info[i].allocated) // if we found an allocated page
-            return &proc->allocated_page_info[i];
-    }
-    return 0;
+  switch(SELECTION){
+
+    case("LIFO"):
+        return find_page_by_LIFO(proc);
+    case("SCFIFO"):
+        return find_page_by_SCFIFO(proc);
+    default:
+       return 0;
+
+  }
 }
+
+struct pages_info *find_page_by_LIFO(struct proc *proc){
+  pages_info* max_time_page;
+  for (int i = 0; i< MAX_PSYC_PAGES; i++){
+    if (proc->allocated_page_info[i].allocated) // if we found an allocated page
+        if(proc->allocated_page_info[i].creation_time > max_time_page->creation_time); //find maximum time - last one in
+            max_time_page = proc->allocated_page_info[i];
+  }
+  return &max_time_page;      // TODO - maybe need to check if found, else return 0;
+}
+
+struct pages_info *find_page_by_SCFIFO(struct proc *proc){
+  pages_info* min_time_page;
+  min_time_page->creation_time = proc->time +1;
+  for (int i = 0; i< MAX_PSYC_PAGES; i++){
+    if (proc->allocated_page_info[i].allocated) // if we found an allocated page
+      if(proc->allocated_page_info[i].creation_time < max_time_page->creation_time); // find minimum time - first one in
+          min_time_page = proc->allocated_page_info[i];
+  }
+  if (min_time_page->pgdir && PTE_A){         //checking if accessed, if so returning to end of line by updating time andn turning off Accessed bit.
+    min_time_page->pgdir &= ~PTE_A;
+    min_time_page->creation_time = proc.time;
+    proc.time++;
+    return find_page_by_SCFIFO(proc);
+  }
+  return &max_time_page;
+}
+
 //PAGEBREAK: 36
 // Print a process listing to console.  For debugging.
 // Runs when user types ^P on console.
@@ -553,6 +630,7 @@ procdump(void)
   char *state;
   uint pc[10];
 
+
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->state == UNUSED)
       continue;
@@ -560,7 +638,8 @@ procdump(void)
       state = states[p->state];
     else
       state = "???";
-    cprintf("%d %s %s", p->pid, state, p->name);
+    cprintf("%d %s %d %d %d %d %d %s", p->pid, state,p->number_of_allocated_pages,p->number_of_curr_paged_out_pages,p->number_of_write_protectes_pages,
+            p->number_of_PGFLT,p->number_of_total_pages_out,p->name);
     if(p->state == SLEEPING){
       getcallerpcs((uint*)p->context->ebp+2, pc);
       for(i=0; i<10 && pc[i] != 0; i++)
@@ -569,3 +648,5 @@ procdump(void)
     cprintf("\n");
   }
 }
+
+#endif
