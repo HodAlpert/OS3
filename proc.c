@@ -134,11 +134,12 @@ void print_proc_mem(const struct proc *p) {
     state = states[p->state];
   else
     state = "???";
-  cprintf("%d %s %s ", p->pid, state, p->name);
+  cprintf("%d %s ", p->pid, state);
 
   uint paged_out = (p->sz - p->res_sz) / PGSIZE;
 
-  cprintf("%d %d %d %d %d", p->sz, paged_out, p->protected_pages, p->page_faults, p->total_paged_out);
+  cprintf("%d %d %d %d %d ", p->sz / PGSIZE, paged_out, p->protected_pages, p->page_faults, p->total_paged_out);
+  cprintf("%s", p->name);
 
   if(p->state == SLEEPING){
     getcallerpcs((uint*)p->context->ebp+2, pc);
