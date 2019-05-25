@@ -57,6 +57,10 @@ struct proc {
 
   char * resident_pages_stack[16];
   uint resident_pages_stack_loc;
+
+  uint page_faults;
+  uint total_paged_out;
+  uint protected_pages;
 };
 
 // Process memory is laid out contiguously, low addresses first:

@@ -234,6 +234,7 @@ void swap_out_pages(int num_pages) {
     char* page = get_page_to_swap();
     write_to_swap(page);
     p->res_sz -= PGSIZE;
+    p->total_paged_out++;
   }
   lcr3(V2P(p->pgdir)); // flush
 }
@@ -242,6 +243,8 @@ uint handle_pgflt() {
   struct proc *p = myproc();
   pte_t *pte;
   uint i;
+
+  p->page_faults++;
 
   // The address that caused the page fault, and it's page
   uint addr = rcr2();
@@ -701,7 +704,12 @@ procdump(void)
       state = states[p->state];
     else
       state = "???";
-    cprintf("%d %s %s", p->pid, state, p->name);
+    cprintf("%d %s %s ", p->pid, state, p->name);
+
+    uint paged_out = (p->sz - p->res_sz) / PGSIZE;
+
+    cprintf("%d %d %d %d %d", p->sz, paged_out, p->protected_pages, p->page_faults, p->total_paged_out);
+
     if(p->state == SLEEPING){
       getcallerpcs((uint*)p->context->ebp+2, pc);
       for(i=0; i<10 && pc[i] != 0; i++)
