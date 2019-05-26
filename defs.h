@@ -196,6 +196,6 @@ void            clearpteu(pde_t *pgdir, char *uva);
 int             light_page_flags(char *user_virtual_address, int flags);
 int             check_page_flags(char *user_virtual_address, int flags);
 int             turn_off_page_flags(char *user_virtual_address, int flags);
-void            handle_page_miss(const char * virtual_address)
+void            handle_page_miss(char *virtual_address);
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

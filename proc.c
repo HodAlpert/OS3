@@ -6,8 +6,6 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
-#ifndef SELECTION  //TODO define better :P no idea how
-#ifndef VERBOSE  //TODO define better :P no idea how
 
 struct {
   struct spinlock lock;
@@ -203,9 +201,11 @@ fork(void)
 
 
    // copying swapFile and updating pgdir to np->pgdir
-    update_new_page_info_array(np, curproc);
+   if (myproc()->pid > 2)
+       update_new_page_info_array(np, curproc);
 
-    np->sz = curproc->sz;
+  np->sz = curproc->sz;
+  np->number_of_write_protected_pages = curproc->number_of_write_protected_pages;
   np->parent = curproc;
   *np->tf = *curproc->tf;
 
@@ -296,9 +296,11 @@ exit(void)
 
   // Jump into the scheduler, never to return.
   curproc->state = ZOMBIE;
-  if(VERBOSE)
-    cprintf("%d / %d free pages in the system", p->number_of_curr_free_pages, p->number_of_total_available_pages);
-  sched();
+#ifdef VERBOSE_PRINT
+    procdump();
+#endif
+
+    sched();
   panic("zombie exit");
 }
 
@@ -332,16 +334,10 @@ wait(void)
         p->number_of_PGFLT=0;
         p->number_of_total_pages_out=0;
         p->number_of_write_protected_pages=0;
-        p->number_of_curr_free_pages=0;
-        p->number_of_total_available_pages=0;
         memset(p->allocated_page_info, 0 ,sizeof(struct pages_info));
         memset(p->swapped_pages, 0 ,sizeof(struct pages_info));
         p->state = UNUSED;
         release(&ptable.lock);
-        for (int i = 0; i< MAX_PSYC_PAGES; i++){    //maybe need to do array = 0 instead of array[i]=0?
-          p->allocated_page_info[i]=0;
-          p->swapped_pages[i] =0;
-        }
 
         return pid;
       }
@@ -581,6 +577,7 @@ struct pages_info *find_a_page_to_swap(struct proc *proc) {
 #ifdef SCFIFO
     return find_page_by_SCFIFO(proc);
 #endif
+    return 0;
 }
 
 struct pages_info *find_page_by_LIFO(struct proc *proc) {
@@ -656,7 +653,8 @@ procdump(void)
   char *state;
   uint pc[10];
 
-
+  uint total_pages = (PHYSTOP - 4 * 1024 * 1024) / PGSIZE;
+  uint free_pages = total_pages;
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->state == UNUSED)
       continue;
@@ -671,8 +669,8 @@ procdump(void)
       for(i=0; i<10 && pc[i] != 0; i++)
         cprintf(" %p", pc[i]);
     }
-    cprintf("\n");
+      cprintf("\n");
+      free_pages -= p->sz / PGSIZE;
   }
+    cprintf("%d / %d free pages in the system\n", free_pages, total_pages);
 }
-
-#endif

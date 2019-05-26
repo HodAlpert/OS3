@@ -70,9 +70,6 @@ struct proc {
   int number_of_total_pages_out;
   int number_of_write_protected_pages;
   int number_of_PGFLT;
-  int number_of_curr_free_pages;
-  int number_of_total_available_pages;
-
 };
 /**
  * searches proc->allocated_page_info entry's and looking for a non allocated entry.
