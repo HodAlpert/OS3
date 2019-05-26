@@ -190,6 +190,10 @@ userinit(void)
 char* get_page_to_swap() {
 #ifdef LIFO
   struct proc *p = myproc();
+
+  if (p->resident_pages_stack_loc == 0)
+    panic("No pages to swap out");
+
   return p->resident_pages_stack[(p->resident_pages_stack_loc--) - 1];
 #endif
 #ifdef SCFIFO
@@ -198,8 +202,12 @@ char* get_page_to_swap() {
   pte_t *pte;
   uint found = 0;
   char* page = 0;
+  uint counter = 0;
 
   while (!found) {
+    if (counter++ > 2 * MAX_PSYC_PAGES)
+      panic("No pages found to swap out");
+
     // Get next page in the queue
     page = p->resident_pages_stack[i];
 
