@@ -108,10 +108,10 @@ int check_page_was_pmalloced(void *ap) {
 int protect_page(void* ap) {
     Header * pHeader = (Header*)ap - 1;
     if (!check_page_was_pmalloced(pHeader)){
-        return -1;
+        return 0;
     }
     if (turn_off_page_flags((char*)pHeader, PTE_W) < 0) {
-        return -1;
+        return 0;
     }
 
     return 1;
@@ -201,10 +201,13 @@ void * pmalloc() {
 int pfree(void* ap){
     Header * ph = (Header*)ap - 1;
     if (!check_page_was_pmalloced(ph)) {
-        return -1;
+        return 0;
     }
     if (light_page_flags((char *) ph, PTE_W) < 0){
-        return -1;
+        return 0;
     }
+
+    if(turn_off_page_flags((char *) ph, PTE_PMALLOCED)) return 0;
+    free(ap);
     return 1;
 }

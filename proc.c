@@ -563,10 +563,10 @@ void init_page_info(struct proc *proc, char* a, struct pages_info *page, int ind
     page->creation_time =  proc->time++;
 }
 
-struct pages_info * find_page_by_virtual_address(struct proc * proc, char* a){
+struct pages_info *find_page_by_virtual_address(struct proc *proc, char *a, struct pages_info *page_info_array) {
     for (int i = 0; i< MAX_PSYC_PAGES; i++){
-        if (proc->swapped_pages[i].allocated && proc->swapped_pages[i].virtual_address == a && proc->swapped_pages[i].pgdir == proc->pgdir) // if we found a page with the right address
-            return &proc->swapped_pages[i];
+        if (page_info_array[i].allocated && page_info_array[i].virtual_address == a && page_info_array[i].pgdir == proc->pgdir) // if we found a page with the right address
+            return &page_info_array[i];
     }
     return 0;
 }

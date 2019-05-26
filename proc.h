@@ -36,7 +36,7 @@ struct context {
 };
 
 struct pages_info {
-    int allocated;                  // is the current page allocated
+    volatile int allocated;                  // is the current page allocated
     char * virtual_address;         // page's virtual address
     pde_t* pgdir;                   // Page table
     uint page_offset_in_swapfile;   // page's offset in the swapfile (if swapped)
@@ -96,7 +96,7 @@ struct pages_info * find_a_page_to_swap(struct proc * proc);
  */
 void init_page_info(struct proc *proc, char* a, struct pages_info *page, int index);
 
-struct pages_info * find_page_by_virtual_address(struct proc * proc, char* a);
+struct pages_info *find_page_by_virtual_address(struct proc *proc, char *a, struct pages_info *page_info_array);
 
 /**
  * returns index of page_info_requested in pages_info_table
@@ -108,8 +108,8 @@ int find_index_of_page_info(struct pages_info *pages_info_table, struct pages_in
  */
 void copy_page_info(struct pages_info * src, struct pages_info * dest);
 void update_new_page_info_array(struct proc *np, struct proc *curproc);
-
-
+struct pages_info *find_page_by_LIFO(struct proc *proc);
+struct pages_info *find_page_by_SCFIFO(struct proc *proc);
 // Process memory is laid out contiguously, low addresses first:
 //   text
 //   original data and bss
