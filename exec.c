@@ -103,7 +103,14 @@ exec(char *path, char **argv)
       curproc->swapped_pages[i].pgdir = pgdir;
   }
 
-
+    for (int i = 0; i < MAX_PSYC_PAGES; i++) {
+        if (curproc->allocated_page_info[i].allocated == 1) {
+            curproc->allocated_page_info[i].pgdir = pgdir;
+        }
+        if (curproc->swapped_pages[i].allocated == 1) {
+            curproc->swapped_pages[i].pgdir = pgdir;
+        }
+    }
   oldpgdir = curproc->pgdir;
   curproc->pgdir = pgdir;
   curproc->sz = sz;

@@ -22,6 +22,7 @@ extern void trapret(void);
 
 static void wakeup1(void *chan);
 
+
 void
 pinit(void)
 {
@@ -90,9 +91,10 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
+  p->time = 1;
 
   release(&ptable.lock);
-    createSwapFile(p);
+  createSwapFile(p);
   // Allocate kernel stack.
   if((p->kstack = kalloc()) == 0){
     p->state = UNUSED;
@@ -201,24 +203,9 @@ fork(void)
 
 
    // copying swapFile and updating pgdir to np->pgdir
-  char page_data[PGSIZE];
-  for (int i = 0; i< MAX_PSYC_PAGES; i++){
-    if(np->allocated_page_info[i] != 0)
-       np->allocated_page_info[i].pgdir= np->pgdir;
-    if(np->swapped_pages[i] != 0){
-       np->swapped_pages[i].pgdir= np->pgdir;
-       if (readFromSwapFile(proc, page_data,np->swapped_pages[i].page_offset_in_swapfile, PGSIZE) < 0)
-           cprintf("could not read from swap file\n");
-       writeToSwapFile(np,np->swapped_pages[i].virtual_address,i*PGSIZE,PGSIZE);
-    }
+    update_new_page_info_array(np, curproc);
 
-
-
-  }
-
-
-
-  np->sz = curproc->sz;
+    np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
 
@@ -241,6 +228,26 @@ fork(void)
   release(&ptable.lock);
 
   return pid;
+}
+
+void update_new_page_info_array(struct proc *np, struct proc *curproc) {
+    char page_data[PGSIZE];
+    for (int i = 0; i < MAX_PSYC_PAGES; i++) {
+        if (curproc->allocated_page_info[i].allocated == 1) {
+            copy_page_info(&curproc->allocated_page_info[i], &np->allocated_page_info[i]);
+            np->allocated_page_info[i].pgdir = np->pgdir;
+            np->allocated_page_info[i].creation_time = np->time;
+        }
+        if (np->swapped_pages[i].allocated == 1) {
+            if (readFromSwapFile(curproc, page_data, np->swapped_pages[i].page_offset_in_swapfile, PGSIZE) < 0) {
+                cprintf("could not read from swap file\n");
+            }
+            writeToSwapFile(np, np->swapped_pages[i].virtual_address, i * PGSIZE, PGSIZE);
+            copy_page_info(&curproc->swapped_pages[i], &np->swapped_pages[i]);
+            np->swapped_pages[i].pgdir = np->pgdir;
+            np->swapped_pages[i].creation_time = np->time;
+        }
+    }
 }
 
 // Exit the current process.  Does not return.
@@ -329,6 +336,8 @@ wait(void)
         p->number_of_curr_paged_out_pages=0;
         p->number_of_curr_free_pages=0;
         p->number_of_total_available_pages=0;
+        memset(p->allocated_page_info, 0 ,sizeof(struct pages_info));
+        memset(p->swapped_pages, 0 ,sizeof(struct pages_info));
         p->state = UNUSED;
         release(&ptable.lock);
         for (int i = 0; i< MAX_PSYC_PAGES; i++){    //maybe need to do array = 0 instead of array[i]=0?
@@ -539,27 +548,26 @@ kill(int pid)
 
 struct pages_info * find_free_page_entry(struct pages_info * pages_info_table) {
     for (int i = 0; i< MAX_PSYC_PAGES; i++){
-        if (pages_info_table[i].allocated) // if we found a page without allocation
+        if (!pages_info_table[i].allocated) // if we found a page without allocation
             return &pages_info_table[i];
     }
     return 0;
 }
-int  find_free_page_entry_index(struct pages_info * pages_info_table) {
+
+int find_index_of_page_info(struct pages_info *pages_info_table, struct pages_info *page_info_requested){
     for (int i = 0; i< MAX_PSYC_PAGES; i++){
-        if (pages_info_table[i].allocated) // if we found a page without allocation
+        if (&pages_info_table[i] == page_info_requested) // if we found a page without allocation
             return i;
     }
     return 0;
 }
-
-void init_page_info(const struct proc *proc, char* a, struct pages_info *page, int index) {
+void init_page_info(struct proc *proc, char* a, struct pages_info *page, int index) {
     page->allocated = 1;
     proc->number_of_allocated_pages++;
     page->virtual_address = a;
     page->pgdir = proc->pgdir;
     page->page_offset_in_swapfile = index * PGSIZE;
-    page->creation_time =  proc.time;
-    proc.time++;
+    page->creation_time =  proc->time++;
 }
 
 struct pages_info * find_page_by_virtual_address(struct proc * proc, char* a){
@@ -570,7 +578,7 @@ struct pages_info * find_page_by_virtual_address(struct proc * proc, char* a){
     return 0;
 }
 
-struct pages_info *find_a_page_to_swap(struct proc *proc) {
+struct pages_info *move_page_back_from_diskfind_a_page_to_swap(struct proc *proc) {
   switch(SELECTION){
 
     case("LIFO"):
@@ -598,16 +606,24 @@ struct pages_info *find_page_by_SCFIFO(struct proc *proc){
   min_time_page->creation_time = proc->time +1;
   for (int i = 0; i< MAX_PSYC_PAGES; i++){
     if (proc->allocated_page_info[i].allocated) // if we found an allocated page
-      if(proc->allocated_page_info[i].creation_time < max_time_page->creation_time); // find minimum time - first one in
+      if(proc->allocated_page_info[i].creation_time < min_time_page->creation_time); // find minimum time - first one in
           min_time_page = proc->allocated_page_info[i];
   }
   if (min_time_page->pgdir && PTE_A){         //checking if accessed, if so returning to end of line by updating time andn turning off Accessed bit.
     min_time_page->pgdir &= ~PTE_A;
-    min_time_page->creation_time = proc.time;
-    proc.time++;
+    min_time_page->creation_time = proc->time;
+    proc->time++;
     return find_page_by_SCFIFO(proc);
   }
-  return &max_time_page;
+  return &min_time_page;
+}
+
+void copy_page_info(struct pages_info * src, struct pages_info * dest){
+    dest->allocated = 1;
+    dest->virtual_address = src->virtual_address;
+    dest->pgdir = src->pgdir;
+    dest->page_offset_in_swapfile = src->page_offset_in_swapfile;
+    dest->creation_time = src->creation_time;
 }
 
 //PAGEBREAK: 36
@@ -624,7 +640,7 @@ procdump(void)
   [RUNNABLE]  "runble",
   [RUNNING]   "run   ",
   [ZOMBIE]    "zombie"
-  };
+};
   int i;
   struct proc *p;
   char *state;

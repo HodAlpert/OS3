@@ -99,10 +99,21 @@ struct pages_info * find_a_page_to_swap(struct proc * proc);
  * @param page: pages_info entry of the place where the page will be swapped to
  * @param index: index of swapped pages entry to init thr page_info in
  */
-void init_page_info(const struct proc *proc, char* a, struct pages_info *page, int index);
+void init_page_info(struct proc *proc, char* a, struct pages_info *page, int index);
 
 struct pages_info * find_page_by_virtual_address(struct proc * proc, char* a);
-int  find_free_page_entry_index(struct pages_info * pages_info_table);
+
+/**
+ * returns index of page_info_requested in pages_info_table
+ */
+int find_index_of_page_info(struct pages_info *pages_info_table, struct pages_info *page_info_requested);
+
+/**
+ * copying page_info from src to dest
+ */
+void copy_page_info(struct pages_info * src, struct pages_info * dest);
+void update_new_page_info_array(struct proc *np, struct proc *curproc);
+
 
 // Process memory is laid out contiguously, low addresses first:
 //   text

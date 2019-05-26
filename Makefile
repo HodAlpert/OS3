@@ -1,3 +1,13 @@
+ifndef SELECTION
+	SELECTION=SCFIFO
+endif
+
+ifeq ($(VERBOSE_PRINT),TRUE)
+    VERBOSE=-DVERBOSE_PRINT
+else
+    VERBOSE=
+endif
+
 OBJS = \
 	bio.o\
 	console.o\
@@ -240,16 +250,6 @@ qemu-nox-gdb: fs.img xv6.img .gdbinit
 # after running make dist, probably want to
 # rename it to rev0 or rev1 or so on and then
 # check in that version.
-
-# if the SELECTION macro is omitted, secondchance FIFOshould be used as default.
-ifndef SELECTION
-SELECTION=SCFIFO
-endif
-
-# If the VERBOSE_PRINTmacro is omitted, FALSE is used as the default valu
-ifndef VERBOSE_PRIN
-VERBOSE_PRIN=FALSE;
-endif
 
 
 EXTRA=\
