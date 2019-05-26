@@ -343,23 +343,9 @@ uint handle_pgflt() {
   return 1;
 }
 
-// Grow current process's memory by n bytes.
-// Return 0 on success, -1 on failure.
-int
-growproc(int n)
-{
-  uint sz;
+int growproc_inner(int n) {
   struct proc *curproc = myproc();
-  sz = curproc->sz;
-
-#ifndef NONE
-  uint overall_pages = (sz + n) / PGSIZE;
-  if (overall_pages > MAX_TOTAL_PAGES) return -1;
-
-  int pages_to_swap = (int)(curproc->res_sz + n) / PGSIZE - MAX_PSYC_PAGES; // @@@ Need to initialize res_sz
-  swap_out_pages(pages_to_swap);
-
-#endif
+  uint sz = curproc->sz;
 
   if(n > 0){
     if((sz = allocuvm(curproc->pgdir, sz, sz + n)) == 0)
@@ -370,6 +356,52 @@ growproc(int n)
   }
   curproc->sz = sz;
   curproc->res_sz += n;
+
+  switchuvm(curproc);
+  return 0;
+}
+
+#define min(a,b) (a < b) ? a : b
+
+// Grow current process's memory by n bytes.
+// Return 0 on success, -1 on failure.
+int
+growproc(int n)
+{
+#ifdef NONE
+  return growproc_inner(n);
+#endif
+
+  struct proc *curproc = myproc();
+  uint sz = curproc->sz;
+
+  if(n < 0){
+    return growproc_inner(n);
+  }
+
+  uint overall_pages = (sz + n) / PGSIZE;
+  if (overall_pages > MAX_TOTAL_PAGES) return -1;
+
+  while (n > 0) {
+    uint available_pages_to_swap = 0;
+#ifdef LIFO
+    available_pages_to_swap = curproc->resident_pages_stack_loc;
+#endif
+#ifdef SCFIFO
+    for (uint i = 0; i < MAX_PSYC_PAGES; ++i) if (curproc->resident_pages_stack[i]) available_pages_to_swap++;
+#endif
+
+    uint need_to_swap = PGROUNDUP((int)(curproc->res_sz + n)) / PGSIZE - MAX_PSYC_PAGES; // @@@ Need to initialize res_sz
+    int pages_to_swap = min(need_to_swap, available_pages_to_swap);
+
+    swap_out_pages(pages_to_swap);
+
+    uint cur_mem = min(n, MAX_PSYC_PAGES*PGSIZE - curproc->res_sz);
+
+    growproc_inner(cur_mem);
+
+    n -= cur_mem;
+  }
 
   switchuvm(curproc);
   return 0;
