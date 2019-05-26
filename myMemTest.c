@@ -6,6 +6,19 @@ void freeze() {
   sleep(10000000);
 }
 
+void test_big_malloc() {
+  printf(1, "Test big malloc..\n");
+  if (fork()) {
+    wait();
+  } else {
+    void* ptr1 = malloc(21*PGSIZE);
+    memset(ptr1, 0, 21*PGSIZE);
+    free(ptr1);
+    exit();
+  }
+  printf(1, "Test PASSED\n");
+}
+
 void test_pmalloc() {
   // To verify that pmalloc is page aligned, and that free'ing works
   void* ptr1 = malloc(3);
@@ -107,6 +120,7 @@ void test_fork() {
 }
 
 int main() {
+  test_big_malloc();
   test_pmalloc();
   test_swap();
   test_fork();
