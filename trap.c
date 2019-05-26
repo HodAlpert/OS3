@@ -81,12 +81,14 @@ trap(struct trapframe *tf)
       myproc()->number_of_PGFLT++;
       if (check_page_flags((char*) rcr2(), PTE_W))
           tf->trapno = T_GPFLT;
+#ifndef NONE
       else if (check_page_flags((char *) rcr2(), PTE_PG)) {
           if (myproc()->pid > 2) {
               handle_page_miss((char *) rcr2());
               break;
           }
       }
+#endif
   //PAGEBREAK: 13
   default:
     if(myproc() == 0 || (tf->cs&3) == 0){

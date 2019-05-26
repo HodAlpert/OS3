@@ -317,7 +317,6 @@ deallocuvm(pde_t *pgdir, uint oldsz, uint newsz) {
                 if (proc->allocated_page_info[i].allocated && proc->allocated_page_info[i].virtual_address == a &&
                     proc->allocated_page_info[i].pgdir == pgdir) {
                     proc->allocated_page_info[i].allocated = 0;
-                    proc->number_of_allocated_pages--;
 
                 }
             }
@@ -449,9 +448,7 @@ int check_page_flags(char *user_virtual_address, int flags) {
 
     pte = walkpgdir(myproc()->pgdir, user_virtual_address, 0);
 
-    if ((*pte & flags) == 0)
-        return 0;
-    return 1;
+    return ((*pte & flags) == 0);
 }
 
 int turn_off_page_flags(char *user_virtual_address, int flags) {

@@ -330,10 +330,8 @@ wait(void)
         p->name[0] = 0;
         p->killed = 0;
         p->number_of_PGFLT=0;
-        p->number_of_allocated_pages=0;
         p->number_of_total_pages_out=0;
-        p->number_of_write_protectes_pages=0;
-        p->number_of_curr_paged_out_pages=0;
+        p->number_of_write_protected_pages=0;
         p->number_of_curr_free_pages=0;
         p->number_of_total_available_pages=0;
         memset(p->allocated_page_info, 0 ,sizeof(struct pages_info));
@@ -342,7 +340,6 @@ wait(void)
         release(&ptable.lock);
         for (int i = 0; i< MAX_PSYC_PAGES; i++){    //maybe need to do array = 0 instead of array[i]=0?
           p->allocated_page_info[i]=0;
-          p->number_of_allocated_pages--;
           p->swapped_pages[i] =0;
         }
 
@@ -563,7 +560,6 @@ int find_index_of_page_info(struct pages_info *pages_info_table, struct pages_in
 }
 void init_page_info(struct proc *proc, char* a, struct pages_info *page, int index) {
     page->allocated = 1;
-    proc->number_of_allocated_pages++;
     page->virtual_address = a;
     page->pgdir = proc->pgdir;
     page->page_offset_in_swapfile = index * PGSIZE;
@@ -578,44 +574,44 @@ struct pages_info * find_page_by_virtual_address(struct proc * proc, char* a){
     return 0;
 }
 
-struct pages_info *move_page_back_from_diskfind_a_page_to_swap(struct proc *proc) {
-  switch(SELECTION){
-
-    case("LIFO"):
-        return find_page_by_LIFO(proc);
-    case("SCFIFO"):
-        return find_page_by_SCFIFO(proc);
-    default:
-       return 0;
-
-  }
-}
-
-struct pages_info *find_page_by_LIFO(struct proc *proc){
-  pages_info* max_time_page;
-  for (int i = 0; i< MAX_PSYC_PAGES; i++){
-    if (proc->allocated_page_info[i].allocated) // if we found an allocated page
-        if(proc->allocated_page_info[i].creation_time > max_time_page->creation_time); //find maximum time - last one in
-            max_time_page = proc->allocated_page_info[i];
-  }
-  return &max_time_page;      // TODO - maybe need to check if found, else return 0;
-}
-
-struct pages_info *find_page_by_SCFIFO(struct proc *proc){
-  pages_info* min_time_page;
-  min_time_page->creation_time = proc->time +1;
-  for (int i = 0; i< MAX_PSYC_PAGES; i++){
-    if (proc->allocated_page_info[i].allocated) // if we found an allocated page
-      if(proc->allocated_page_info[i].creation_time < min_time_page->creation_time); // find minimum time - first one in
-          min_time_page = proc->allocated_page_info[i];
-  }
-  if (min_time_page->pgdir && PTE_A){         //checking if accessed, if so returning to end of line by updating time andn turning off Accessed bit.
-    min_time_page->pgdir &= ~PTE_A;
-    min_time_page->creation_time = proc->time;
-    proc->time++;
+struct pages_info *find_a_page_to_swap(struct proc *proc) {
+#ifdef LIFO
+    return find_page_by_LIFO(proc);
+#endif
+#ifdef SCFIFO
     return find_page_by_SCFIFO(proc);
-  }
-  return &min_time_page;
+#endif
+}
+
+struct pages_info *find_page_by_LIFO(struct proc *proc) {
+    struct pages_info *max_time_page = proc->allocated_page_info;
+    for (int i = 0; i < MAX_PSYC_PAGES; i++) {
+        if (proc->allocated_page_info[i].allocated) {
+            if (proc->allocated_page_info[i].creation_time > max_time_page->creation_time) //find maximum time - last one in
+                max_time_page = &proc->allocated_page_info[i];
+        } // if we found an allocated page
+    }
+    return max_time_page;      // TODO - maybe need to check if found, else return 0;
+}
+
+struct pages_info *find_page_by_SCFIFO(struct proc *proc) {
+    int min_creation_time = proc->time + 1;
+    struct pages_info *min_time_page = proc->allocated_page_info;
+    for (int i = 0; i < MAX_PSYC_PAGES; i++) {
+        if (proc->allocated_page_info[i].allocated) // if we found an allocated page
+            if (proc->allocated_page_info[i].creation_time < min_creation_time) { // find minimum time - first one in
+                min_time_page = &proc->allocated_page_info[i];
+                min_creation_time = proc->allocated_page_info[i].creation_time;
+            }
+    }
+    if (check_page_flags(min_time_page->virtual_address,
+                         PTE_A)) {//checking if accessed, if so returning to end of line by updating time andn turning off Accessed bit.
+        turn_off_page_flags(min_time_page->virtual_address, PTE_A);
+        min_time_page->creation_time = proc->time;
+        proc->time++;
+        return find_page_by_SCFIFO(proc);
+    }
+    return min_time_page;
 }
 
 void copy_page_info(struct pages_info * src, struct pages_info * dest){
@@ -624,6 +620,20 @@ void copy_page_info(struct pages_info * src, struct pages_info * dest){
     dest->pgdir = src->pgdir;
     dest->page_offset_in_swapfile = src->page_offset_in_swapfile;
     dest->creation_time = src->creation_time;
+}
+
+int number_of_allocated_memory_pages(){
+    return myproc()->sz / PGSIZE;
+}
+
+int number_of_paged_out_pages() {
+    struct proc *proc = myproc();
+    int counter = 0;
+    for (int i = 0; i < MAX_PSYC_PAGES; i++) {
+        if (proc->swapped_pages[i].allocated) // if we found a page with the right address
+            counter++;
+    }
+    return counter;
 }
 
 //PAGEBREAK: 36
@@ -654,7 +664,7 @@ procdump(void)
       state = states[p->state];
     else
       state = "???";
-    cprintf("%d %s %d %d %d %d %d %s", p->pid, state,p->number_of_allocated_pages,p->number_of_curr_paged_out_pages,p->number_of_write_protectes_pages,
+    cprintf("%d %s %d %d %d %d %d %s", p->pid, state,number_of_allocated_memory_pages(),number_of_paged_out_pages(),p->number_of_write_protected_pages,
             p->number_of_PGFLT,p->number_of_total_pages_out,p->name);
     if(p->state == SLEEPING){
       getcallerpcs((uint*)p->context->ebp+2, pc);

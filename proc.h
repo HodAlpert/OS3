@@ -67,10 +67,8 @@ struct proc {
   struct file *swapFile;      //page file
   struct pages_info allocated_page_info[MAX_PSYC_PAGES];
   struct pages_info swapped_pages[MAX_PSYC_PAGES];
-  int number_of_allocated_pages;
-  int number_of_curr_paged_out_pages;
   int number_of_total_pages_out;
-  int number_of_write_protectes_pages;
+  int number_of_write_protected_pages;
   int number_of_PGFLT;
   int number_of_curr_free_pages;
   int number_of_total_available_pages;
