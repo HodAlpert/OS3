@@ -92,7 +92,8 @@ found:
   p->time = 1;
 
   release(&ptable.lock);
-  createSwapFile(p);
+  if (p->pid > 2)
+      createSwapFile(p);
   // Allocate kernel stack.
   if((p->kstack = kalloc()) == 0){
     p->state = UNUSED;
@@ -653,6 +654,15 @@ procdump(void)
   char *state;
   uint pc[10];
 
+#ifdef LIFO
+  cprintf("LIFO\n");
+#endif
+#ifdef SCFIFO
+  cprintf("SCFIFO\n");
+#endif
+#ifdef NONE
+    cprintf("NONE\n");
+#endif
   uint total_pages = (PHYSTOP - 4 * 1024 * 1024) / PGSIZE;
   uint free_pages = total_pages;
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
@@ -662,7 +672,9 @@ procdump(void)
       state = states[p->state];
     else
       state = "???";
-    cprintf("%d %s %d %d %d %d %d %s", p->pid, state,number_of_allocated_memory_pages(),number_of_paged_out_pages(),p->number_of_write_protected_pages,
+    int allocated_pages = number_of_allocated_memory_pages();
+    int paged_out_pages = number_of_paged_out_pages();
+    cprintf("%d %s %d %d %d %d %d %s", p->pid, state,allocated_pages,paged_out_pages,p->number_of_write_protected_pages,
             p->number_of_PGFLT,p->number_of_total_pages_out,p->name);
     if(p->state == SLEEPING){
       getcallerpcs((uint*)p->context->ebp+2, pc);

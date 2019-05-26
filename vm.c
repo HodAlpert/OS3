@@ -279,6 +279,7 @@ void swap_page(char *new_virtual_memory, struct pages_info *page_in_disk, struct
     // initializing new swapped page struct
     init_page_info(proc, page_in_ram->virtual_address, page_in_disk, index);
     // clearing swapped page from memory
+    cprintf("page_in_ram->virtual_address: 0x%x\n", page_in_ram->virtual_address);
     pte_t *pte = walkpgdir(proc->pgdir, (char *) page_in_ram->virtual_address, 0);
     if (!check_page_flags((char *) pte, PTE_W)) {//if page is protected
         cprintf("cannot swap new_virtual_memory protected page\n"); // TODO- should we allow swapping of protected pages?

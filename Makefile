@@ -1,5 +1,17 @@
+ifndef SCFIFO
+SCFIFO = 1
+endif
+
+ifndef LIFO
+LIFO = 2
+endif
+
+ifndef NONE
+NONE = 3
+endif
+
 ifndef SELECTION
-	SELECTION=SCFIFO
+	SELECTION=$(SCFIFO)
 endif
 
 ifeq ($(VERBOSE_PRINT),TRUE)
