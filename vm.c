@@ -246,7 +246,7 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz) {
         }
 #ifndef NONE
         struct proc *proc = myproc();
-        if (proc->pid > 2) {
+        if (myproc() != 0 && myproc()->pid > 2){
             struct pages_info *page_info = find_free_page_entry(proc->allocated_page_info);
             if (page_info) { // if there is a place to put the new page in the ram
                 init_page_info(proc, (char *) a, page_info, 0);
@@ -320,7 +320,7 @@ deallocuvm(pde_t *pgdir, uint oldsz, uint newsz) {
             if (myproc()->pid >2) {
                 struct pages_info *page_info;
                 if ((page_info = find_page_by_virtual_address(proc, (char *) a, proc->allocated_page_info)) != 0) {
-                    page_info->allocated = 0;
+                    memset(page_info, 0, sizeof(struct pages_info));
                 }
             }
             *pte = 0;
@@ -488,7 +488,6 @@ void handle_page_miss(char *virtual_address) {
         char tmp_page_data[PGSIZE];
         struct pages_info *page_to_replace = find_a_page_to_swap(proc);
         memmove((void *) tmp_page_data, page_to_replace->virtual_address, PGSIZE); //backing up data from RAM to tmp buffer
-        cprintf("memmove moved\n");
         copy_page_info(page_to_replace, &tmp_page_info); // backing page in RAM info
         tmp_page_info.virtual_address = tmp_page_data; //assigning tmp_page with the copied data so that swap method could handle it from noe
 

@@ -160,7 +160,6 @@ int
 growproc(int n) {
     uint sz;
     struct proc *curproc = myproc();
-
     sz = curproc->sz;
     if (n > 0) {
         if ((sz = allocuvm(curproc->pgdir, sz, sz + n)) == 0)
@@ -236,10 +235,11 @@ void update_new_page_info_array(struct proc *np, struct proc *curproc) {
             np->allocated_page_info[i].creation_time = np->time;
         }
         if (np->swapped_pages[i].allocated == 1) {
-            if (readFromSwapFile(curproc, page_data, np->swapped_pages[i].page_offset_in_swapfile, PGSIZE) < 0) {
+            if (curproc->swapFile && readFromSwapFile(curproc, page_data, np->swapped_pages[i].page_offset_in_swapfile, PGSIZE) < 0) {
                 cprintf("could not read from swap file\n");
             }
-            writeToSwapFile(np, np->swapped_pages[i].virtual_address, i * PGSIZE, PGSIZE);
+            if (curproc->swapFile)
+                writeToSwapFile(np, np->swapped_pages[i].virtual_address, i * PGSIZE, PGSIZE);
             copy_page_info(&curproc->swapped_pages[i], &np->swapped_pages[i]);
             np->swapped_pages[i].pgdir = np->pgdir;
             np->swapped_pages[i].creation_time = np->time;
@@ -268,7 +268,8 @@ exit(void) {
     }
 
     // close swapfile
-    removeSwapFile(curproc);
+    if (curproc->pid > 2)
+        removeSwapFile(curproc);
 
 
     begin_op();

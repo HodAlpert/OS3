@@ -83,8 +83,7 @@ trap(struct trapframe *tf)
           tf->trapno = T_GPFLT;
 #ifndef NONE
       else if (check_page_flags((char *) rcr2(), PTE_PG)) {
-              cprintf("testtt\n");
-              if (myproc()->pid > 2) {
+              if (myproc() != 0 && myproc()->pid > 2) {
               handle_page_miss((char *) rcr2());
               break;
           }
