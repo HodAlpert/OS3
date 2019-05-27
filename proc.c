@@ -198,7 +198,7 @@ fork(void) {
 
     // copying swapFile and updating pgdir to np->pgdir
     if (myproc()->pid > 2)
-        update_new_page_info_array(np, curproc);
+        update_new_page_info_array(np, curproc, np->pgdir);
 
     np->sz = curproc->sz;
     np->number_of_write_protected_pages = curproc->number_of_write_protected_pages;
@@ -226,11 +226,11 @@ fork(void) {
     return pid;
 }
 
-void update_new_page_info_array(struct proc *np, struct proc *curproc) {
+void update_new_page_info_array(struct proc *np, struct proc *curproc, pte_t *pgdir) {
     char page_data[PGSIZE];
     for (int i = 0; i < MAX_PSYC_PAGES; i++) {
         if (curproc->allocated_page_info[i].allocated == 1) {
-            copy_page_info(&curproc->allocated_page_info[i], &np->allocated_page_info[i]);
+            copy_page_info(&curproc->allocated_page_info[i], &np->allocated_page_info[i], pgdir);
             np->allocated_page_info[i].pgdir = np->pgdir;
             np->allocated_page_info[i].creation_time = np->time;
         }
@@ -240,7 +240,7 @@ void update_new_page_info_array(struct proc *np, struct proc *curproc) {
             }
             if (curproc->swapFile)
                 writeToSwapFile(np, np->swapped_pages[i].virtual_address, i * PGSIZE, PGSIZE);
-            copy_page_info(&curproc->swapped_pages[i], &np->swapped_pages[i]);
+            copy_page_info(&curproc->swapped_pages[i], &np->swapped_pages[i], pgdir);
             np->swapped_pages[i].pgdir = np->pgdir;
             np->swapped_pages[i].creation_time = np->time;
         }
@@ -551,10 +551,11 @@ void init_page_info(struct proc *proc, char *a, struct pages_info *page, int ind
     page->creation_time = proc->time++;
 }
 
-struct pages_info *find_page_by_virtual_address(struct proc *proc, char *a, struct pages_info *page_info_array) {
+struct pages_info *
+find_page_by_virtual_address(char *a, struct pages_info *page_info_array, pde_t *pgdir) {
     for (int i = 0; i < MAX_PSYC_PAGES; i++) {
         if (page_info_array[i].allocated && page_info_array[i].virtual_address == a &&
-            page_info_array[i].pgdir == proc->pgdir) // if we found a page with the right address
+            page_info_array[i].pgdir == pgdir) // if we found a page with the right address
             return &page_info_array[i];
     }
     return 0;
@@ -602,10 +603,10 @@ struct pages_info *find_page_by_SCFIFO(struct proc *proc) {
     return min_time_page;
 }
 
-void copy_page_info(struct pages_info *src, struct pages_info *dest) {
+void copy_page_info(struct pages_info *src, struct pages_info *dest, pte_t *pgdir) {
     dest->allocated = 1;
     dest->virtual_address = src->virtual_address;
-    dest->pgdir = src->pgdir;
+    dest->pgdir = pgdir;
     dest->page_offset_in_swapfile = src->page_offset_in_swapfile;
     dest->creation_time = src->creation_time;
 }

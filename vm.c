@@ -125,7 +125,8 @@ void swap_page(char *new_virtual_memory, struct pages_info *page_in_disk, struct
  * @param dest: the page_info we want to map the src into
  * @param move_memory: a boolean which indicate weather we should move the memory from the dist to the RAM
  */
-void move_page_info_back_from_disk(char *swapped_virtual_address, struct pages_info *src, char *mem, struct pages_info *des);
+void
+move_page_info_back_from_disk(char *swapped_virtual_address, struct pages_info *src, char *mem, struct pages_info *des);
 
 // Set up kernel part of a page table.
 pde_t *
@@ -255,6 +256,7 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz) {
                 if (!page_to_swap_to) {
                     cprintf("process exceeds process memory limits\n");
                     deallocuvm(pgdir, newsz, oldsz);
+                    kfree(mem);
                     return 0;
                 }
                 struct pages_info *page_in_ram = find_a_page_to_swap(proc);
@@ -274,7 +276,7 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz) {
 }
 
 void swap_page(char *new_virtual_memory, struct pages_info *page_in_disk, struct pages_info *page_in_ram) {
-    struct proc * proc = myproc();
+    struct proc *proc = myproc();
     int index = find_index_of_page_info(proc->swapped_pages, page_in_disk);
     // writing allocated page to file
     writeToSwapFile(proc, (char *) page_in_ram->virtual_address, index * PGSIZE, PGSIZE);
@@ -305,7 +307,6 @@ deallocuvm(pde_t *pgdir, uint oldsz, uint newsz) {
 
     if (newsz >= oldsz)
         return oldsz;
-
     a = PGROUNDUP(newsz);
     for (; a < oldsz; a += PGSIZE) {
         pte = walkpgdir(pgdir, (char *) a, 0);
@@ -317,9 +318,9 @@ deallocuvm(pde_t *pgdir, uint oldsz, uint newsz) {
                 panic("kfree");
             char *v = P2V(pa);
             kfree(v);
-            if (myproc()->pid >2) {
+            if (myproc()->pid > 2) {
                 struct pages_info *page_info;
-                if ((page_info = find_page_by_virtual_address(proc, (char *) a, proc->allocated_page_info)) != 0) {
+                if ((page_info = find_page_by_virtual_address((char *) a, proc->allocated_page_info, pgdir)) != 0) {
                     memset(page_info, 0, sizeof(struct pages_info));
                 }
             }
@@ -384,7 +385,7 @@ copyuvm(pde_t *pgdir, uint sz)
     flags = PTE_FLAGS(*pte);
     if ((mem = kalloc()) == 0)
         goto bad;
-      if (should_copy) memmove(mem, (char*)P2V(pa), PGSIZE);
+    if (should_copy) memmove(mem, (char*)P2V(pa), PGSIZE);
     if(mappages(d, (void*)i, PGSIZE, V2P(mem), flags) < 0)
       goto bad;
     pte = walkpgdir(d, (void *) i, 0);
@@ -450,10 +451,11 @@ int light_page_flags(char *user_virtual_address, int flags) {
 
 int check_page_flags(char *user_virtual_address, int flags) {
     pte_t *pte;
-
     pte = walkpgdir(myproc()->pgdir, user_virtual_address, 0);
-
-    return ((*pte & flags));
+    if (pte) {
+        return ((*pte & flags));
+    }
+    return -1;
 }
 
 int turn_off_page_flags(char *user_virtual_address, int flags) {
@@ -473,7 +475,8 @@ void handle_page_miss(char *virtual_address) {
     struct proc *proc = myproc();
 
     char *swapped_virtual_address = (char *) PGROUNDDOWN((uint) virtual_address);
-    struct pages_info *page_in_disk = find_page_by_virtual_address(proc, swapped_virtual_address, proc->swapped_pages);
+    struct pages_info *page_in_disk = find_page_by_virtual_address(swapped_virtual_address, proc->swapped_pages,
+                                                                   proc->pgdir);
     if (page_in_disk == 0)
         panic("could not find swapped page struct");
     char *mem = kalloc();
@@ -487,8 +490,9 @@ void handle_page_miss(char *virtual_address) {
         struct pages_info tmp_page_info;
         char tmp_page_data[PGSIZE];
         struct pages_info *page_to_replace = find_a_page_to_swap(proc);
-        memmove((void *) tmp_page_data, page_to_replace->virtual_address, PGSIZE); //backing up data from RAM to tmp buffer
-        copy_page_info(page_to_replace, &tmp_page_info); // backing page in RAM info
+        memmove((void *) tmp_page_data, page_to_replace->virtual_address,
+                PGSIZE); //backing up data from RAM to tmp buffer
+        copy_page_info(page_to_replace, &tmp_page_info, proc->pgdir); // backing page in RAM info
         tmp_page_info.virtual_address = tmp_page_data; //assigning tmp_page with the copied data so that swap method could handle it from noe
 
         move_page_info_back_from_disk(swapped_virtual_address, page_in_disk, mem, page_to_replace);
@@ -496,7 +500,8 @@ void handle_page_miss(char *virtual_address) {
     }
 }
 
-void move_page_info_back_from_disk(char *swapped_virtual_address, struct pages_info *src, char *mem, struct pages_info *dest) {
+void move_page_info_back_from_disk(char *swapped_virtual_address, struct pages_info *src, char *mem,
+                                   struct pages_info *dest) {
     struct proc *proc = myproc();
     init_page_info(proc, swapped_virtual_address, dest, 0);
     if (mappages(proc->pgdir, swapped_virtual_address, PGSIZE, V2P(mem), PTE_P | PTE_W | PTE_U) < 0) {
@@ -510,7 +515,8 @@ void move_page_info_back_from_disk(char *swapped_virtual_address, struct pages_i
     if (readFromSwapFile(proc, page_data, src->page_offset_in_swapfile, PGSIZE) < 0)
         cprintf("could not read from swap file\n");
     memmove((void *) swapped_virtual_address, page_data, PGSIZE);//moving
-    init_page_info(proc, swapped_virtual_address, dest, 0); // initializing swapped back page ////why? because I said so!!!
+    init_page_info(proc, swapped_virtual_address, dest,
+                   0); // initializing swapped back page ////why? because I said so!!!
     memset(src, 0, sizeof(struct pages_info)); // clearing old swapped page            ////why? because I said so!!!!!!
 }
 

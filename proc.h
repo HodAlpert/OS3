@@ -96,7 +96,8 @@ struct pages_info * find_a_page_to_swap(struct proc * proc);
  */
 void init_page_info(struct proc *proc, char* a, struct pages_info *page, int index);
 
-struct pages_info *find_page_by_virtual_address(struct proc *proc, char *a, struct pages_info *page_info_array);
+struct pages_info *
+find_page_by_virtual_address(char *a, struct pages_info *page_info_array, pde_t *pgdir);
 
 /**
  * returns index of page_info_requested in pages_info_table
@@ -106,8 +107,8 @@ int find_index_of_page_info(struct pages_info *pages_info_table, struct pages_in
 /**
  * copying page_info from src to dest
  */
-void copy_page_info(struct pages_info * src, struct pages_info * dest);
-void update_new_page_info_array(struct proc *np, struct proc *curproc);
+void copy_page_info(struct pages_info *src, struct pages_info *dest, pte_t *pgdir);
+void update_new_page_info_array(struct proc *np, struct proc *curproc, pte_t *pgdir);
 struct pages_info *find_page_by_LIFO(struct proc *proc);
 struct pages_info *find_page_by_SCFIFO(struct proc *proc);
 // Process memory is laid out contiguously, low addresses first:

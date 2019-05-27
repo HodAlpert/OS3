@@ -19,6 +19,7 @@ exec(char *path, char **argv)
   pde_t *pgdir, *oldpgdir;
   struct proc *curproc = myproc();
 
+
   begin_op();
 
   if((ip = namei(path)) == 0){
@@ -93,7 +94,7 @@ exec(char *path, char **argv)
       last = s+1;
   safestrcpy(curproc->name, last, sizeof(curproc->name));
 
-  // Commit to the user image.
+//   Commit to the user image.
     if (myproc()->pid > 2) {
         //updating pgdir in arrays for each used page
         for (int i = 0; i < MAX_PSYC_PAGES; i++) {
