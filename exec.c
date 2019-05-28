@@ -95,15 +95,14 @@ exec(char *path, char **argv)
   safestrcpy(curproc->name, last, sizeof(curproc->name));
 
 //   Commit to the user image.
-    if (myproc()->pid > 2) {
-        //updating pgdir in arrays for each used page
-        for (int i = 0; i < MAX_PSYC_PAGES; i++) {
-            if (curproc->allocated_page_info[i].allocated == 1)
-                curproc->allocated_page_info[i].pgdir = pgdir;
-            if (curproc->swapped_pages[i].allocated == 1)
-                curproc->swapped_pages[i].pgdir = pgdir;
-        }
+    //updating pgdir in arrays for each used page
+    for (int i = 0; i < MAX_PSYC_PAGES; i++) {
+        if (curproc->allocated_page_info[i].allocated == 1)
+            curproc->allocated_page_info[i].pgdir = pgdir;
+        memset(&curproc->swapped_pages[i], 0, sizeof(struct pages_info));
     }
+    removeSwapFile(curproc);
+    createSwapFile(curproc);
   oldpgdir = curproc->pgdir;
   curproc->pgdir = pgdir;
   curproc->sz = sz;
