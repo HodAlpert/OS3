@@ -12,7 +12,7 @@ struct cpu {
   int intena;                  // Were interrupts enabled before pushcli?
   struct proc *proc;           // The process running on this cpu or null
 };
-
+int min(int a,int b);
 extern struct cpu cpus[NCPU];
 extern int ncpu;
 

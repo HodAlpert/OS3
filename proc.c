@@ -336,7 +336,13 @@ int growproc_inner(int n) {
   return 0;
 }
 
-#define min(a,b) (a < b) ? a : b
+//#define min(a,b) (a < b) ? a : b
+
+int min(int a,int b){
+    if (a < b)
+        return a;
+    return b;
+}
 
 // Grow current process's memory by n bytes.
 // Return 0 on success, -1 on failure.
