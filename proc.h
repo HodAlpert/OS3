@@ -35,21 +35,12 @@ struct context {
   uint eip;
 };
 
-struct pages_info {
-    volatile int allocated;                  // is the current page allocated
-    char * virtual_address;         // page's virtual address
-    pde_t* pgdir;                   // Page table
-    uint page_offset_in_swapfile;   // page's offset in the swapfile (if swapped)
-    uint creation_time;              // for FIFO and LIFO
-};
-
-
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 // Per-process state
 struct proc {
-  uint sz;                     // Size of process memory (bytes)
-  uint res_sz;                 // Size of memory resident in physical RAM
+  uint total_size;                     // Size of process memory (bytes)
+  uint ram_size;                 // Size of memory resident in physical RAM
   pde_t* pgdir;                // Page table
   char *kstack;                // Bottom of kernel stack for this process
   enum procstate state;        // Process state
@@ -62,55 +53,19 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
-  uint time;                   // for LIFO and FIFO selection
+
   //Swap file. must initiate with create swap file
   struct file *swapFile;      //page file
-  struct pages_info allocated_page_info[MAX_PSYC_PAGES];
-  struct pages_info swapped_pages[MAX_PSYC_PAGES];
-  int number_of_total_pages_out;
-  int number_of_write_protected_pages;
-  int number_of_PGFLT;
+  char* swapFilePages[16];    // Each entry is the page written in the swap file in that offset
+
+  char * resident_pages_stack[16];
+  uint resident_pages_stack_loc;
+
+  uint page_faults;
+  uint total_paged_out;
+  uint protected_pages;
 };
-/**
- * searches proc->allocated_page_info entry's and looking for a non allocated entry.
- * @param pages_info_table: page_info entry, could be the allocated or the swapped entry of a given process
- * @return the address of a pages_info which is not allocated at the moment if there is one
- *         otherwise: return 0.
- */
-struct pages_info * find_free_page_entry(struct pages_info * pages_info_table);
 
-/**
- *
- * @param proc: process to swap pages in
- * @return pointer to the page which will be swapped
- */
-struct pages_info * find_a_page_to_swap(struct proc * proc);
-
-
-/**
- *
- * @param proc: process in which the page should be initialized
- * @param a: virtual address of the page
- * @param page: pages_info entry of the place where the page will be swapped to
- * @param index: index of swapped pages entry to init thr page_info in
- */
-void init_page_info(struct proc *proc, char* a, struct pages_info *page, int index);
-
-struct pages_info *
-find_page_by_virtual_address(char *a, struct pages_info *page_info_array, pde_t *pgdir);
-
-/**
- * returns index of page_info_requested in pages_info_table
- */
-int find_index_of_page_info(struct pages_info *pages_info_table, struct pages_info *page_info_requested);
-
-/**
- * copying page_info from src to dest
- */
-void copy_page_info(struct pages_info *src, struct pages_info *dest, pte_t *pgdir);
-void update_new_page_info_array(struct proc *np, struct proc *curproc, pte_t *pgdir);
-struct pages_info *find_page_by_LIFO(struct proc *proc);
-struct pages_info *find_page_by_SCFIFO(struct proc *proc);
 // Process memory is laid out contiguously, low addresses first:
 //   text
 //   original data and bss

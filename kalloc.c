@@ -61,11 +61,8 @@ kfree(char *v)
 {
   struct run *r;
 
-    if((uint)v % PGSIZE || v < end || V2P(v) >= PHYSTOP) {
-        cprintf("address of v: 0x%x, end: 0x%x, V2P(v): 0x%x, PYSTOP: 0x%x\n", v, end, V2P(v), PHYSTOP);
-        cprintf("(uint)v % PGSIZE: %d, v < end: %x, V2P(v) >= PHYSTOP: %d\n", (uint)v % PGSIZE, v < end, V2P(v) >= PHYSTOP);
-        panic("kfree");
-    }
+  if((uint)v % PGSIZE || v < end || V2P(v) >= PHYSTOP)
+    panic("kfree");
 
   // Fill with junk to catch dangling refs.
   memset(v, 1, PGSIZE);

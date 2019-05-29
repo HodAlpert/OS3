@@ -77,20 +77,12 @@ trap(struct trapframe *tf)
             cpuid(), tf->cs, tf->eip);
     lapiceoi();
     break;
-  case T_PGFLT:
-      myproc()->number_of_PGFLT++;
-      if((tf->cs&3) == 3) {
-          if (!check_page_flags((char *) rcr2(), PTE_W))
-              tf->trapno = T_GPFLT;
-#ifndef NONE
-          else if (check_page_flags((char *) rcr2(), PTE_PG)) {
-              if (myproc() && myproc()->pid > 2) {
-                  handle_page_miss((char *) rcr2());
-                  break;
-              }
+      case T_PGFLT:
+          if (myproc() != 0 && (tf->cs & 3) == 3) {
+              if (handle_pgflt()) break;
           }
-#endif
-      }
+
+
   //PAGEBREAK: 13
   default:
     if(myproc() == 0 || (tf->cs&3) == 0){
@@ -100,10 +92,12 @@ trap(struct trapframe *tf)
       panic("trap");
     }
     // In user space, assume process misbehaved.
+
     cprintf("pid %d %s: trap %d err %d on cpu %d "
-            "eip 0x%x addr 0x%x--kill proc\n",
+            "eip 0x%x addr 0x%x--kill proc, flags: 0x%x\n",
             myproc()->pid, myproc()->name, tf->trapno,
-            tf->err, cpuid(), tf->eip, rcr2());
+            tf->err, cpuid(), tf->eip, rcr2(),
+            PTE_FLAGS(walkpgdir(myproc()->pgdir, (void *) rcr2(), 0)));
     myproc()->killed = 1;
   }
 

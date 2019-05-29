@@ -34,8 +34,8 @@ void test_pmalloc() {
         printf(1, "Header page aligned!\n");
 
     // The page is not protected - we should be able to write to it
-    memset(new_page, 0, PGSIZE);
-
+    memset(new_page, 0, PGSIZE - 8);
+    printf(1, "ttttttt\n");
     protect_page(new_page);
 
     if (fork()) {

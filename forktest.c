@@ -22,11 +22,15 @@ forktest(void)
 
   for(n=0; n<N; n++){
     pid = fork();
-    if(pid < 0)
-      break;
-    if(pid == 0)
-      exit();
+      printf(1,"forked\n");
+      if(pid < 0) {
+          break;
+      }
+      if(pid == 0) {
+          exit();
+      }
   }
+    printf(1,"exited\n");
 
   if(n == N){
     printf(1, "fork claimed to work N times!\n", N);

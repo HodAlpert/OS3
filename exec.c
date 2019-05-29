@@ -94,20 +94,26 @@ exec(char *path, char **argv)
       last = s+1;
   safestrcpy(curproc->name, last, sizeof(curproc->name));
 
-//   Commit to the user image.
-    //updating pgdir in arrays for each used page
-    for (int i = 0; i < MAX_PSYC_PAGES; i++) {
-        if (curproc->allocated_page_info[i].allocated == 1)
-            curproc->allocated_page_info[i].pgdir = pgdir;
-        memset(&curproc->swapped_pages[i], 0, sizeof(struct pages_info));
-    }
-    removeSwapFile(curproc);
-    createSwapFile(curproc);
+  // Commit to the user image.
   oldpgdir = curproc->pgdir;
   curproc->pgdir = pgdir;
-  curproc->sz = sz;
+  curproc->total_size = sz;
+
+  curproc->ram_size = curproc->total_size ;
+
+  // Mark no pages are swapped
+  memset(curproc->resident_pages_stack, 0, sizeof(char*)*16);
+  curproc->resident_pages_stack_loc = 0;
+
+  // reset swap file
+  memset(curproc->swapFilePages, 0, sizeof(char*) * 16);
+
+
   curproc->tf->eip = elf.entry;  // main
   curproc->tf->esp = sp;
+  curproc->total_paged_out = 0;
+  curproc->page_faults = 0;
+  curproc->protected_pages = 0;
   switchuvm(curproc);
   freevm(oldpgdir);
   return 0;
