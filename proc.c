@@ -287,8 +287,16 @@ uint handle_pgflt() {
     panic("Couldn't find page in the swap file");
 
   // Read from swap file into memory
-  readFromSwapFile(p, page, i*PGSIZE, PGSIZE);
-  p->swapFilePages[i] = 0;
+    int protected = 0;
+    if (!check_page_flags(page, PTE_W)) {
+        protected = 1;
+        light_page_flags(page, PTE_W);
+    }
+    readFromSwapFile(p, page, i * PGSIZE, PGSIZE);
+    if (protected) {
+        turn_off_page_flags(page, PTE_W);
+    }
+    p->swapFilePages[i] = 0;
 
   // enlarge resident size
   p->ram_size += PGSIZE;
