@@ -769,9 +769,9 @@ procdump(void) {
                 cprintf(" %p", pc[i]);
         }
         cprintf("\n");
+        free_pages -= p->total_size / PGSIZE;
     }
 
-    free_pages -= p->total_size / PGSIZE;
 
     cprintf("%d / %d free pages in the system\n", free_pages, total_pages);
 }
