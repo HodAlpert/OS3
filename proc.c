@@ -465,7 +465,7 @@ exit(void)
   int fd;
 
 #ifdef VERBOSE_PRINT
-  print_proc_mem(curproc);
+    single_process_dump();
 #endif
 
   if(curproc == initproc)
@@ -784,6 +784,43 @@ procdump(void) {
         free_pages -= p->total_size / PGSIZE;
     }
 
+#ifdef VERBOSE_PRINT
+    cprintf("%d / %d free pages in the system\n", free_pages, total_pages);
+#endif
+}
+void single_process_dump(void){
+    struct proc *p;
 
+    uint total_pages = (PHYSTOP - 4 * 1024 * 1024) / PGSIZE;
+    uint free_pages = total_pages;
+
+
+    for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+        if (p->state == UNUSED) {
+            continue;
+        }
+        free_pages -= p->total_size / PGSIZE;
+    }
+    p = myproc();
+    int i;
+    char *state;
+    uint pc[10];
+
+
+    state = "tunning";
+    cprintf("%d %s ", p->pid, state);
+
+    uint swapped = (p->total_size - p->ram_size) / PGSIZE;
+
+    cprintf("%d %d %d %d %d ", p->total_size / PGSIZE, swapped, p->protected_pages, p->page_faults,
+            p->total_paged_out);
+    cprintf("%s", p->name);
+
+    if (p->state == SLEEPING) {
+        getcallerpcs((uint *) p->context->ebp + 2, pc);
+        for (i = 0; i < 10 && pc[i] != 0; i++)
+            cprintf(" %p", pc[i]);
+    }
+    cprintf("\n");
     cprintf("%d / %d free pages in the system\n", free_pages, total_pages);
 }

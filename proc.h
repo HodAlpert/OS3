@@ -13,6 +13,7 @@ struct cpu {
   struct proc *proc;           // The process running on this cpu or null
 };
 int min(int a,int b);
+void single_process_dump(void);
 extern struct cpu cpus[NCPU];
 extern int ncpu;
 
