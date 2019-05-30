@@ -242,7 +242,7 @@ void swap_out_pages(int num_pages) {
 
   for (int i = 0; i < num_pages; ++i) {
     char* page = get_page_to_swap();
-    write_to_swap(page);
+      write_to_swap(page);
     p->ram_size -= PGSIZE;
     p->total_paged_out++;
   }
@@ -261,8 +261,8 @@ uint handle_pgflt() {
   // Find the PTE of the address
   pte = walkpgdir(p->pgdir, (void *) addr, 0);
 
-  // The page was not paged out
-  if (!(*pte & PTE_W)) {
+  // The page was protected against writing and was not paged out
+  if (!(*pte & PTE_W ) && !(*pte & PTE_PG)) {
     p->tf->trapno = 13;
     return 0;
   }
@@ -287,14 +287,12 @@ uint handle_pgflt() {
     panic("Couldn't find page in the swap file");
 
   // Read from swap file into memory
-    int protected = 0;
     if (!check_page_flags(page, PTE_W)) {
-        protected = 1;
-        light_page_flags(page, PTE_W);
+        light_page_flags(page, PTE_W | PTE_WAS_PROTECTED);
     }
     readFromSwapFile(p, page, i * PGSIZE, PGSIZE);
-    if (protected) {
-        turn_off_page_flags(page, PTE_W);
+    if (check_page_flags(page, PTE_WAS_PROTECTED)) {
+        turn_off_page_flags(page, PTE_W | PTE_WAS_PROTECTED);
     }
     p->swapFilePages[i] = 0;
 

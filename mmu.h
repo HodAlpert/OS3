@@ -144,6 +144,7 @@ struct segdesc {
 #define PTE_MBZ         0x180   // Bits must be zero
 #define PTE_PMALLOCED   0x800   // page was malloced using pmalloc (turning on the 12'th bit)
 #define PTE_PG 0x200 // Paged out to secondary storage
+#define PTE_WAS_PROTECTED 0x400
 
 // Address in page table or page directory entry
 #define PTE_ADDR(pte)   ((uint)(pte) & ~0xFFF)
