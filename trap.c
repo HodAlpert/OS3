@@ -79,7 +79,7 @@ trap(struct trapframe *tf)
     break;
       case T_PGFLT:
           if (myproc() != 0 && (tf->cs & 3) == 3) {
-              if (handle_pgflt()) break;
+              if (page_fault_handler()) break;
           }
 
 

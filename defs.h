@@ -126,7 +126,7 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
-uint            handle_pgflt();
+uint            page_fault_handler();
 
 // swtch.S
 void            swtch(struct context**, struct context*);
@@ -199,10 +199,6 @@ void            clearpteu(pde_t *pgdir, char *uva);
 int             light_page_flags(char *user_virtual_address, int flags);
 int             check_page_flags(char *user_virtual_address, int flags);
 int             turn_off_page_flags(char *user_virtual_address, int flags);
-void            handle_page_miss(char *virtual_address);
-void            clearpte(char *uva, uint flags);
-void            setpte(char *uva, uint flags);
-int             ispteflagsset(char *uva, uint flags);
 pte_t *  walkpgdir(pde_t *pgdir, const void *va, int alloc);
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

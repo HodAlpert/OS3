@@ -149,27 +149,26 @@ switchkvm(void) {
 
 // Switch TSS and h/w page table to correspond to process p.
 void
-switchuvm(struct proc *p)
-{
-  if(p == 0)
-    panic("switchuvm: no process");
-  if(p->kstack == 0)
-    panic("switchuvm: no kstack");
-  if(p->pgdir == 0)
-    panic("switchuvm: no pgdir");
+switchuvm(struct proc *p) {
+    if (p == 0)
+        panic("switchuvm: no process");
+    if (p->kstack == 0)
+        panic("switchuvm: no kstack");
+    if (p->pgdir == 0)
+        panic("switchuvm: no pgdir");
 
-  pushcli();
-  mycpu()->gdt[SEG_TSS] = SEG16(STS_T32A, &mycpu()->ts,
-                                sizeof(mycpu()->ts)-1, 0);
-  mycpu()->gdt[SEG_TSS].s = 0;
-  mycpu()->ts.ss0 = SEG_KDATA << 3;
-  mycpu()->ts.esp0 = (uint)p->kstack + KSTACKSIZE;
-  // setting IOPL=0 in eflags *and* iomb beyond the tss segment limit
-  // forbids I/O instructions (e.g., inb and outb) from user space
-  mycpu()->ts.iomb = (ushort) 0xFFFF;
-  ltr(SEG_TSS << 3);
-  lcr3(V2P(p->pgdir));  // switch to process's address space
-  popcli();
+    pushcli();
+    mycpu()->gdt[SEG_TSS] = SEG16(STS_T32A, &mycpu()->ts,
+                                  sizeof(mycpu()->ts) - 1, 0);
+    mycpu()->gdt[SEG_TSS].s = 0;
+    mycpu()->ts.ss0 = SEG_KDATA << 3;
+    mycpu()->ts.esp0 = (uint) p->kstack + KSTACKSIZE;
+    // setting IOPL=0 in eflags *and* iomb beyond the tss segment limit
+    // forbids I/O instructions (e.g., inb and outb) from user space
+    mycpu()->ts.iomb = (ushort) 0xFFFF;
+    ltr(SEG_TSS << 3);
+    lcr3(V2P(p->pgdir));  // switch to process's address space
+    popcli();
 }
 
 // Load the initcode into address 0 of pgdir.
@@ -221,37 +220,37 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz) {
     if (newsz < oldsz)
         return oldsz;
 
-  a = PGROUNDUP(oldsz);
-  for(; a < newsz; a += PGSIZE){
-    mem = kalloc();
-    if(mem == 0){
-      cprintf("allocuvm out of memory\n");
-      deallocuvm(pgdir, newsz, oldsz);
-      return 0;
-    }
+    a = PGROUNDUP(oldsz);
+    for (; a < newsz; a += PGSIZE) {
+        mem = kalloc();
+        if (mem == 0) {
+            cprintf("allocuvm out of memory\n");
+            deallocuvm(pgdir, newsz, oldsz);
+            return 0;
+        }
 
 #ifdef LIFO
-    struct proc* p = myproc();
-    p->resident_pages_stack[p->resident_pages_stack_loc++] = (char *) a;
+        struct proc* p = myproc();
+        p->pages_on_ram[p->pages_on_ram_stack_pointer++] = (char *) a;
 #endif
 #ifdef SCFIFO
-    struct proc* p = myproc();
-    uint i;
-    // Find the first empty spot
-    for (i = 0; p->resident_pages_stack[i] != 0 && i <= MAX_PSYC_PAGES; ++i);
-    if (i > MAX_PSYC_PAGES) panic("allocuvm couldn't find free spot");
-    p->resident_pages_stack[i] = (char*)a;
+        struct proc* p = myproc();
+        uint i;
+        // Find the first empty spot
+        for (i = 0; p->pages_on_ram[i] != 0 && i <= MAX_PSYC_PAGES; ++i);
+        if (i > MAX_PSYC_PAGES) panic("allocuvm couldn't find free spot");
+        p->pages_on_ram[i] = (char*)a;
 #endif
 
-    memset(mem, 0, PGSIZE);
-    if(mappages(pgdir, (char*)a, PGSIZE, V2P(mem), PTE_W|PTE_U) < 0){
-      cprintf("allocuvm out of memory (2)\n");
-      deallocuvm(pgdir, newsz, oldsz);
-      kfree(mem);
-      return 0;
+        memset(mem, 0, PGSIZE);
+        if (mappages(pgdir, (char *) a, PGSIZE, V2P(mem), PTE_W | PTE_U) < 0) {
+            cprintf("allocuvm out of memory (2)\n");
+            deallocuvm(pgdir, newsz, oldsz);
+            kfree(mem);
+            return 0;
+        }
     }
-  }
-  return newsz;
+    return newsz;
 }
 
 // Deallocate user pages to bring the process size from oldsz to
@@ -259,89 +258,46 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz) {
 // need to be less than oldsz.  oldsz can be larger than the actual
 // process size.  Returns the new process size.
 int
-deallocuvm(pde_t *pgdir, uint oldsz, uint newsz)
-{
-  pte_t *pte;
-  uint a, pa;
+deallocuvm(pde_t *pgdir, uint oldsz, uint newsz) {
+    pte_t *pte;
+    uint a, pa;
 
-  if(newsz >= oldsz)
-    return oldsz;
+    if (newsz >= oldsz)
+        return oldsz;
 
-  a = PGROUNDUP(newsz);
-  for(; a  < oldsz; a += PGSIZE){
-    pte = walkpgdir(pgdir, (char*)a, 0);
-    if(!pte)
-      a = PGADDR(PDX(a) + 1, 0, 0) - PGSIZE;
-    else if((*pte & PTE_P) != 0){
-      pa = PTE_ADDR(*pte);
-      if(pa == 0)
-        panic("kfree");
-      char *v = P2V(pa);
-      kfree(v);
-      *pte = 0;
+    a = PGROUNDUP(newsz);
+    for (; a < oldsz; a += PGSIZE) {
+        pte = walkpgdir(pgdir, (char *) a, 0);
+        if (!pte)
+            a = PGADDR(PDX(a) + 1, 0, 0) - PGSIZE;
+        else if ((*pte & PTE_P) != 0) {
+            pa = PTE_ADDR(*pte);
+            if (pa == 0)
+                panic("kfree");
+            char *v = P2V(pa);
+            kfree(v);
+            *pte = 0;
+        }
     }
-  }
-  return newsz;
+    return newsz;
 }
 
 // Free a page table and all the physical memory pages
 // in the user part.
 void
-freevm(pde_t *pgdir)
-{
-  uint i;
+freevm(pde_t *pgdir) {
+    uint i;
 
-  if(pgdir == 0)
-    panic("freevm: no pgdir");
-  deallocuvm(pgdir, KERNBASE, 0);
-  for(i = 0; i < NPDENTRIES; i++){
-    if(pgdir[i] & PTE_P){
-      char * v = P2V(PTE_ADDR(pgdir[i]));
-      kfree(v);
+    if (pgdir == 0)
+        panic("freevm: no pgdir");
+    deallocuvm(pgdir, KERNBASE, 0);
+    for (i = 0; i < NPDENTRIES; i++) {
+        if (pgdir[i] & PTE_P) {
+            char *v = P2V(PTE_ADDR(pgdir[i]));
+            kfree(v);
+        }
     }
-  }
-  kfree((char*)pgdir);
-}
-
-/**
- * Flush the TLB to make new permissions take place
- */
-void flushtlb() {
-  lcr3(V2P(myproc()->pgdir));
-}
-
-int ispteflagsset(char *uva, uint flags) {
-  pte_t * pte = walkpgdir(myproc()->pgdir, uva, 0);
-  if(pte == 0)
-    panic("ispteflagsset");
-
-  return *pte & flags ? 1 : 0;
-}
-
-/**
- * Clear specified flags in the PTE
- */
-void clearpte(char *uva, uint flags) {
-  pte_t *pte;
-
-  pte = walkpgdir(myproc()->pgdir, uva, 0);
-  if(pte == 0)
-    panic("clearpte");
-  *pte &= ~flags;
-  flushtlb();
-}
-
-/**
- * Set specified flags in the PTE
- */
-void setpte(char *uva, uint flags) {
-  pte_t *pte;
-
-  pte = walkpgdir(myproc()->pgdir, uva, 0);
-  if(pte == 0)
-    panic("clearpte");
-  *pte |= flags;
-  flushtlb();
+    kfree((char *) pgdir);
 }
 
 // Clear PTE_U on a page. Used to create an inaccessible
@@ -358,36 +314,34 @@ clearpteu(pde_t *pgdir, char *uva) {
 
 // Given a parent process's page table, create a copy
 // of it for a child.
-pde_t*
-copyuvm(pde_t *pgdir, uint sz)
-{
-  pde_t *d;
-  pte_t *pte;
-  uint pa, i, flags;
-  char *mem;
+pde_t *
+copyuvm(pde_t *pgdir, uint sz) {
+    pde_t *d;
+    pte_t *pte;
+    uint pa, i, flags;
+    char *mem;
 
-  if((d = setupkvm()) == 0)
-    return 0;
-  for(i = 0; i < sz; i += PGSIZE){
-    uint should_copy = 1;
-    if((pte = walkpgdir(pgdir, (void *) i, 0)) == 0)
-      panic("copyuvm: pte should exist");
-    if (*pte & PTE_PG) {
-        should_copy = 0;
+    if ((d = setupkvm()) == 0)
+        return 0;
+    for (i = 0; i < sz; i += PGSIZE) {
+        uint should_copy = 1;
+        if ((pte = walkpgdir(pgdir, (void *) i, 0)) == 0)
+            panic("copyuvm: pte should exist");
+        if (*pte & PTE_PG) {
+            should_copy = 0;
+        } else if (!(*pte & PTE_P))
+            panic("copyuvm: page not present");
+        pa = PTE_ADDR(*pte);
+        flags = PTE_FLAGS(*pte);
+        if ((mem = kalloc()) == 0)
+            goto bad;
+        if (should_copy) memmove(mem, (char *) P2V(pa), PGSIZE);
+        if (mappages(d, (void *) i, PGSIZE, V2P(mem), flags) < 0)
+            goto bad;
+        pte = walkpgdir(d, (void *) i, 0);
+        if (!should_copy) *pte &= ~PTE_P;
     }
-    else if(!(*pte & PTE_P))
-      panic("copyuvm: page not present");
-    pa = PTE_ADDR(*pte);
-    flags = PTE_FLAGS(*pte);
-    if ((mem = kalloc()) == 0)
-        goto bad;
-    if (should_copy) memmove(mem, (char*)P2V(pa), PGSIZE);
-    if(mappages(d, (void*)i, PGSIZE, V2P(mem), flags) < 0)
-      goto bad;
-    pte = walkpgdir(d, (void *) i, 0);
-    if (!should_copy) *pte &= ~PTE_P;
-  }
-  return d;
+    return d;
 
     bad:
     freevm(d);

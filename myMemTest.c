@@ -1,6 +1,7 @@
 #include "param.h"
 #include "types.h"
 #include "user.h"
+
 #define PGSIZE 4096
 
 void freeze() {
@@ -12,37 +13,37 @@ void test_big_malloc() {
     if (fork()) {
         wait();
     } else {
-        void* ptr1 = malloc(21*PGSIZE);
-        memset(ptr1, 0, 21*PGSIZE);
+        void *ptr1 = malloc(21 * PGSIZE);
+        memset(ptr1, 0, 21 * PGSIZE);
         free(ptr1);
         exit();
     }
     printf(1, "Test PASSED\n");
 }
-
+/**
+ * verifying that pmalloc is page aligned, and that free'ing works
+ */
 void test_pmalloc() {
-    // To verify that pmalloc is page aligned, and that free'ing works
-    void* ptr1 = malloc(3);
+    void *ptr1 = malloc(3);
 
-    void* new_page = pmalloc();
+    void *new_page = pmalloc();
 
-    void* ptr2 = malloc(3);
+    void *ptr2 = malloc(3);
 
-    if (((uint)new_page -8) % PGSIZE) {
-        printf(1, "Header NOT page aligned %d! FAIL\n", (uint)new_page -8);
+    if (((uint) new_page - 8) % PGSIZE) {
+        printf(1, "Header NOT page aligned %d! FAIL\n", (uint) new_page - 8);
     } else
         printf(1, "Header page aligned!\n");
 
     // The page is not protected - we should be able to write to it
     memset(new_page, 0, PGSIZE - 8);
-    printf(1, "ttttttt\n");
     protect_page(new_page);
 
     if (fork()) {
         // See that the child crashes because it accesses the protected page
         wait();
     } else {
-        printf(1, "Trying to write to protected page. Expected to fail\n");
+        printf(1, "Trying to write to protected page. Should fail\n");
         memset(new_page, 0, 1); // Should crash
         printf(1, "Wrote to a protected page. FAIL\n");
 
@@ -63,7 +64,7 @@ void test_pmalloc() {
 
 void test_swap() {
     printf(1, "test swap\n");
-    void* mem[1];
+    void *mem[1];
     for (int i = 0; i < 1; ++i) {
         if ((mem[i] = pmalloc()) == 0) {
             printf(1, "pmalloc failed\n");
@@ -81,7 +82,7 @@ void test_swap() {
 
 void test_fork() {
     printf(1, "fork test\n");
-    void* mem[1];
+    void *mem[1];
 
     printf(1, "Initializing memory\n");
 
